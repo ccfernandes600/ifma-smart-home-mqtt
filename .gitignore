@@ -1,0 +1,29 @@
+# Backups do Packet Tracer
+*.pkt.backup
+*.pkt~
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# WSL / Windows (mark of the web)
+*Zone.Identifier
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Temporários
+*.tmp
+*.log
