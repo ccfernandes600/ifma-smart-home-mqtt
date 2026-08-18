@@ -16,8 +16,10 @@ Evolução do [projeto V3](https://github.com/ccfernandes600/ifma-smart-home-pac
 - [x] Definição final das zonas e dispositivos (6 zonas + central)
 - [x] Definição da arquitetura MQTT (Opção B: pub/sub sobre TCP+JSON)
 - [x] Mapa de portas e endereçamento IP ([ARQUITETURA.md](docs/ARQUITETURA.md))
-- [ ] Confirmar suporte a `tcp` na MCU-PT (único check pendente)
-- [ ] Desenvolvimento dos scripts Python (SBCs + MCU)
+- [ ] Confirmar suporte a `tcp` na MCU-PT — é o teste que pode forçar mudança de arquitetura
+- [x] Desenvolvimento dos scripts Python (SBCs + MCU) — 8 scripts em `src/`:
+      broker central, 6 zonas e o publicador do RFID Reader
+- [ ] Validar no simulador as 3 zonas que nunca rodaram: cozinha, quarto e jardim
 - [ ] Montagem da topologia no Packet Tracer
 - [ ] Dashboard web (Netlify)
 - [ ] Documentação final
