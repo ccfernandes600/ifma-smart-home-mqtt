@@ -83,6 +83,31 @@ Enviado a cada zona conectada quando o `modo_viagem` muda (botão na Central), e
 - Jardim: `agua`, `vento`, `pressao`, `luz` · cmd: `irrigacao`, `dreno`, `luz`
 - Garagem: `co`, `co2`, `movimento` · cmd: `porta`, `fan`, `alarme`
 
+### Decisão: quem decide o quê — a zona, não a Central
+
+**Fechado em 20/09/2026.** A zona é **autônoma**: lê os próprios sensores e aciona os próprios atuadores sem pedir licença. A Central só decide o que **atravessa zonas** ou depende de política da casa. Esse é o critério para saber onde uma regra nova deve morar.
+
+**O que a Central decide hoje** — 7 dos 22 tópicos publicados chegam a alguma regra:
+
+| Tópico | Regra na Central | Por que não é da zona |
+|---|---|---|
+| `casa/garagem/co`, `casa/garagem/co2`, `casa/cozinha/co`, `casa/cozinha/fumaca` | alerta de gás no LCD mestre + Home Speaker | o aviso é para a casa inteira, não para quem está na zona |
+| `casa/garagem/movimento` | **intrusão**, só quando combinado com `modo_viagem` | o modo é estado da casa; a garagem sozinha não sabe se há alguém em casa |
+| `casa/perimetro/campainha` | tela "VISITANTE" | idem — o aviso é central |
+| `casa/perimetro/rfid` | whitelist `CARTOES_VALIDOS` → `cmd/porta` | é política de segurança: muda num lugar só, e o leitor continua "burro" |
+
+**O que a zona decide sozinha:** fumaça na Cozinha aciona sprinkler, janela, fan e alarme no mesmo loop; a Garagem liga o exaustor no gás e o alarme no movimento em modo viagem; o Perímetro acende a câmera no movimento. Nada disso passa pela rede.
+
+**A consequência que justifica a decisão:** zona sem broker **continua automatizando**. O `publicar()` das zonas, sem conexão, apenas loga o aviso e segue com a lógica local. Se as regras morassem na Central, uma zona desconectada ficaria cega — inclusive a Cozinha, que é a de risco de incêndio. Num simulador que roda em sala de aula, com a rede sendo mexida ao vivo, esse é o cenário provável, não o excepcional.
+
+**Os `cmd/*` que ninguém aciona são funcionalidade, não código morto.** As zonas tratam **20 comandos de atuador**; a Central envia **um** (`casa/perimetro/cmd/porta`, no fluxo RFID) mais o broadcast `casa/todas/cmd/modo`. Os **19 restantes** são a interface de comando manual — o que o dashboard vai usar para ligar a irrigação, acender o RGB da Sala ou abrir a janela do Quarto. Esperam um remetente humano, não uma regra.
+
+Pelo mesmo motivo, **15 tópicos publicados não têm consumidor nenhum** hoje (temperatura, umidade, luz, vento, pressão, água e o movimento das zonas que não a Garagem): são a matéria-prima do painel. Enquanto o dashboard não existir, dois terços do tráfego da casa não servem a ninguém — o que promove "onde servir o dashboard" de item futuro a **pendência que dá sentido ao protocolo** (ver §8).
+
+> O verificador imprime "6 lidos, 16 só para o dashboard" porque enxerga apenas os `estado.get()` de `avaliar_regras()`. O 7º consumidor é o `casa/perimetro/rfid`, tratado como evento dentro de `ao_receber()`, antes de chegar ao estado.
+
+**A alternativa descartada** era a Central concentrar as regras — mais fiel ao pub/sub. Além de tirar a autonomia das zonas, ela exigiria um mapa zona→IP no broker: o `enviar_comando()` localiza o destino comparando `remoteIP()` com um IP passado à mão, e hoje o único que a Central conhece é o `PERIMETRO_IP`. Quem quiser reabrir a discussão começa por aí.
+
 ### Regra: Perímetro — cartão RFID válido abre a Porta
 
 O RFID Reader (nó independente) publica a tag lida em `casa/perimetro/rfid`. A **Central** valida contra a whitelist `CARTOES_VALIDOS` (em `broker_central.py`):
@@ -220,4 +245,5 @@ Padrão IFMA: toda lógica em funções `def`, comentários em português, sem c
 - [x] RFID Reader tem API programável? **Sem API GPIO** (`Direct/Local/Remote Control: N/A`), **mas REABILITADO**: o script Python embutido do Thing tem `tcp`/`json` → publica direto no broker (`thing_rfid_reader.py`, testado: tag 1005 lida e publicada). Requisito de montagem: I/O Config → Digital Slots 0→1 (vem de fábrica sem slots).
 - [ ] Confirmar se Smoke Detector/CO Detector da Cozinha têm o mesmo problema (Smart Thing) ao codificar `zona_cozinha.py`
 - [x] **Perímetro (`zona_perimetro.py`) — VALIDADO 100% no PT (02/07/2026)**: conexão, broadcast de modo, campainha (hold 8s), fluxo RFID completo (Card → Reader → broker → whitelist → `cmd/porta` → Door abre/fecha em 5s), Camera ligando em movimento, Siren soando em movimento+modo viagem. Siren e Camera confirmados como `customWrite` `"0"/"1"`.
-- [ ] Definir onde o **dashboard web** é servido (Central via `HTTPServer`, ou nó dedicado tipo o SBC Web do V3 em 192.168.1.50)
+- [ ] **Modo viagem só muda o comportamento de 2 das 6 zonas.** `casa/todas/cmd/modo` é broadcast e chega a todas, mas só **Perímetro e Garagem** tratam. A **Cozinha ignora de propósito** (risco de incêndio independe de haver gente em casa, ver o comentário no topo de `zona_cozinha.py`); **Sala, Quarto e Jardim ignoram por omissão** — decidir o que o modo deve fazer em cada uma (apagar luz, cortar climatização, reduzir irrigação) ou registrar aqui que não faz nada.
+- [ ] Definir onde o **dashboard web** é servido (Central via `HTTPServer`, ou nó dedicado tipo o SBC Web do V3 em 192.168.1.50) — **a prioridade subiu**: depois da decisão da §4, são **15 dos 22 tópicos** que existem só para ele. Sem painel, dois terços do tráfego não têm consumidor.
