@@ -8,6 +8,25 @@ Projeto **V4** de automação residencial IoT simulada no **Cisco Packet Tracer 
 
 Não é um projeto de software convencional: o código Python roda como **MicroPython dentro do editor de cada SBC no Packet Tracer**, não no host. Por isso **não há comandos de build, lint ou test** — a "execução" é colar/rodar o script no SBC dentro do simulador e acionar sensores manualmente. Os artefatos centrais são o arquivo `.pkt` (topologia), os scripts Python dos SBCs e a documentação.
 
+## Verificador
+
+Não há build, lint nem teste — mas há um **verificador**, que torna executáveis as
+regras normativas deste arquivo:
+
+```bash
+python3 verificacao/verificar.py
+```
+
+Ele confere estaticamente o que o simulador não perdoa: sintaxe, ausência de `class`
+(restrição pedagógica), só pacotes que existem no PT, `customRead()` sempre com
+`.strip()`, MCU sem as portas A0–A3, orçamento de portas por controlador, pino
+repetido, comentário de pino divergente do valor, padrão dos tópicos MQTT, porta
+única de broker e integridade do V3.
+
+É o critério de pronto de qualquer alteração — inclusive das feitas por outro agente
+de IA (ver `../FORCA-TAREFA.md`). Ao resolver um gotcha novo do simulador,
+acrescente o teste correspondente: é o que impede o erro de voltar.
+
 ## Projeto V3 (referência — não modificar)
 
 `/home/ccfernandes/projetos/ifma-smart-home-packet-tracer/` é o clone do projeto V3 original (github.com/ccfernandes600/ifma-smart-home-packet-tracer). Serve **apenas como referência** de arquitetura e código — **nunca editar**. Padrões herdados do V3 que valem para o V4:
