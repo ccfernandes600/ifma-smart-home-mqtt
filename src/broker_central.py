@@ -175,10 +175,13 @@ def pagina_painel():
     p.append("footer{margin-top:16px;font-size:12px;color:#5b6b63}")
     p.append("</style></head><body>")
     p.append("<div class='faixa'><h1>{}</h1>".format(situacao))
-    p.append("<p>Modo: {} &middot; zonas conectadas: {} &middot; atualiza a cada {}s</p></div>".format(
-        "viagem" if modo_viagem else "casa", len(clientes), ATUALIZA_EM))
-
     zonas = linhas_por_zona()
+    # Dois numeros diferentes de proposito: conectado e quem abriu a conexao
+    # (zonas + o RFID Reader); publicando e quem ja mandou algum valor. Zona
+    # de eventos, como o Perimetro, fica conectada sem publicar nada.
+    p.append("<p>Modo: {} &middot; conectados: {} &middot; publicando: {} &middot; atualiza a cada {}s</p></div>".format(
+        "viagem" if modo_viagem else "casa", len(clientes), len(zonas), ATUALIZA_EM))
+
     if not zonas:
         p.append("<p>Nenhuma publicacao recebida ainda.</p>")
     for zona in sorted(zonas):
@@ -270,6 +273,18 @@ def transmitir_modo(alvo=None):
             c.send(msg)
 
 
+def limpar_clientes():
+    """Tira da lista quem ja desconectou.
+
+    Sem isso a lista so cresce: cada Run de uma zona abre uma conexao nova
+    e a antiga fica ali, fazendo o painel anunciar mais zonas do que
+    existem de fato. Chamado a cada ciclo do main()."""
+    vivos = [c for c in clientes if c.connected()]
+    if len(vivos) != len(clientes):
+        log("Conexoes encerradas removidas: {} -> {}".format(len(clientes), len(vivos)))
+        clientes[:] = vivos
+
+
 def ao_novo_cliente(client):
     """Uma zona acabou de conectar ao broker."""
     clientes.append(client)
@@ -314,6 +329,7 @@ def setup():
 def main():
     setup()
     while True:
+        limpar_clientes()  # mantem a contagem do painel honesta
         verificar_porta_rfid()  # fecha a porta do perimetro apos o prazo
         sleep(1)
 

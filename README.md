@@ -22,7 +22,7 @@ Evolução do [projeto V3](https://github.com/ccfernandes600/ifma-smart-home-pac
 - [ ] Validar no simulador as 3 zonas que nunca rodaram: cozinha, quarto e jardim
 - [ ] Montagem da topologia no Packet Tracer
 - [x] **Painel web servido pela própria Central** (`HTTPServer` :80) — rota `/` com tabela por zona
-      e `/estado` com JSON bruto; prévia fora do simulador em `verificacao/previa_painel.py`
+      e `/estado` com JSON bruto; **validado no simulador em 21/09** (build 9.0.1.0858)
 - [x] **Modo viagem fechado:** Sala, Quarto, Perímetro e Garagem reagem; Cozinha e Jardim ignoram
       por decisão registrada
 - [ ] Abrir o painel no PC0 com as seis zonas publicando — é o teste que fecha o projeto

@@ -80,9 +80,9 @@ Broker ouvindo na porta 1883
 Painel web em http://192.168.1.100:80
 ```
 
-**Se a segunda linha não aparecer:** o `from http import *` falhou ou o `HTTPServer.start(80)`
-retornou erro. Anote a mensagem exata — é a única parte do código de hoje que nunca rodou no
-simulador, e a API de HTTP Server é declarada como "SBC only" na documentação do PT.
+**O `HTTPServer` foi validado no build 9.0.1.0858 em 21/09** — o painel abriu no navegador do PC0
+com as tabelas e a faixa de situação. Se mesmo assim a segunda linha não aparecer no seu arranque,
+o problema é local: `from http import *` falhando ou `HTTPServer.start(80)` retornando erro.
 
 **Checkpoint:** a Central sobe com as duas linhas e as zonas já existentes reconectam
 ("Zona conectada: 192.168.1.xx").
