@@ -87,6 +87,20 @@ o problema é local: `from http import *` falhando ou `HTTPServer.start(80)` ret
 **Checkpoint:** a Central sobe com as duas linhas e as zonas já existentes reconectam
 ("Zona conectada: 192.168.1.xx").
 
+> ⚠️ **Reiniciar a Central derruba as zonas em silêncio.** Ao dar Run de novo na Central, ela sobe
+> com `estado` e `clientes` vazios — e as zonas não percebem: o `manter_conexao()` delas só
+> reconecta quando `connected()` vira falso, e o objeto cliente pode continuar reportando conexão
+> depois que o servidor sumiu. O sintoma é o painel abrir com **conectados: 0 · publicando: 0** e
+> "Nenhuma publicacao recebida ainda".
+>
+> **Regra prática: recolou a Central, reinicie as zonas** (Stop → Run em cada uma). Antes disso,
+> vale esperar uns 10 segundos: às vezes a primeira tentativa de envio derruba o socket morto e a
+> zona reconecta sozinha.
+>
+> Para saber em qual caso você está, olhe o terminal de uma zona: publicando sem reclamar é
+> conexão fantasma (precisa de restart); logando "sem conexao com o broker" é porque já percebeu e
+> vai reconectar.
+
 ---
 
 ## Bloco 3 — ✅ RESPONDIDO em 21/09 · o que sobra são 5 min

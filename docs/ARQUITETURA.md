@@ -234,6 +234,20 @@ Padrão IFMA: toda lógica em funções `def`, comentários em português, sem c
 
 ---
 
+## 7.1 Gotcha operacional: reiniciar a Central orfana as zonas (21/09/2026)
+
+Dar Run de novo no script da Central zera `estado` e `clientes`, mas **as zonas não são avisadas**.
+O `manter_conexao()` de cada zona só dispara quando `cliente.connected()` retorna falso, e no PT o
+objeto cliente pode continuar reportando conexão depois que o servidor caiu. Resultado: a Central
+fica ouvindo sem ninguém, e o painel abre com "conectados: 0".
+
+Regra: **recolou o `broker_central.py`, reinicie as zonas.** Uma alternativa de código, se isso
+incomodar em aula, é um heartbeat — a Central retransmitindo o modo a cada 30 s e cada zona
+forçando reconexão se ficar 90 s sem receber nada. Custa código nos sete scripts e ainda não foi
+implementado.
+
+---
+
 ## 8. Pendências
 
 - [x] Confirmar no PT se a **MCU-PT suporta o pacote `tcp`** — **CONFIRMADO** (02/07/2026): Garagem-MCU conectou ao broker, Central logou "Zona conectada"
