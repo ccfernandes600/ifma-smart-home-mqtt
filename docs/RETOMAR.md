@@ -1,5 +1,43 @@
 # Retomar o V4 — revisão de 20/09/2026, atualizada em 21/09
 
+## ONDE PARAMOS — bancada de 21/09/2026 (build 9.0.1.0858)
+
+**Antes de tudo, na próxima sessão:** conferir se o `src/IFMA-MQTT.pkt` do git já tem a montagem
+desta bancada. Se a data dele ainda for 04/07, a montagem de Cozinha, Quarto e Jardim ficou só no
+Packet Tracer e precisa ser salva e commitada.
+
+**O que foi provado no simulador:**
+
+| Item | Resultado |
+|---|---|
+| `HTTPServer` no SBC | ✅ funciona — painel abriu no navegador do PC0 |
+| Rota `/` e rota `/estado` | ✅ as duas responderam |
+| `Environment.get("Smoke")` | ✅ existe e retorna sem erro |
+| Caminho zona → Central → painel | ✅ inteiro, com Cozinha, Quarto e Sala |
+
+**Estado das zonas quando paramos:** publicando **3** (Cozinha, Quarto, Sala) e conectados **5** —
+a leitura provável é Perímetro e RFID Reader conectados e calados, que é o comportamento correto
+deles. **Garagem e Jardim não haviam subido**; era o que íamos conferir no terminal de cada uma.
+O alvo é conectados 7 e publicando 5.
+
+**Dois defeitos achados e corrigidos hoje:**
+
+1. A lista de clientes da Central só crescia — o painel contava conexões aceitas, não zonas vivas.
+   Resolvido com `limpar_clientes()` a cada ciclo, e o painel passou a mostrar dois números.
+2. Reiniciar a Central orfana as zonas em silêncio (ver §7.1 da ARQUITETURA). Regra: recolou a
+   Central, reinicie as zonas.
+
+**Leitura dos sensores:** umidade marca 79% e prova que a leitura funciona; temperatura e luz
+marcam 0 porque é o ambiente padrão do contêiner. Consequência: **nenhum cenário dispara sozinho**
+— AC a 30 °C, luminária no escuro e Cozinha a 20% de fumaça ficam todos parados.
+
+**Próximo passo sugerido:** subir Garagem e Jardim, depois criar um `diag_ambiente.py` (arquivo
+novo) que injete temperatura e luminosidade por `setContribution`, como o `diag_smoke.py` faz com
+fumaça — é o que permite demonstrar climatização e luminária sem depender do relógio do simulador.
+
+---
+
+
 > **21/09:** o painel web foi implementado e o modo viagem foi fechado. O que resta do projeto
 > **só acontece com o Packet Tracer aberto** — ver "Ordem sugerida para a bancada", no fim.
 
