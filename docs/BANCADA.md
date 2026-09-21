@@ -92,9 +92,17 @@ simulador, e a API de HTTP Server é declarada como "SBC only" na documentação
 `Environment.get("Smoke")` é a única incógnita que ainda pode forçar mudança de projeto, e a
 Cozinha inteira depende dela.
 
-1. Num SBC qualquer que já esteja montado, abrir **Programming** e rodar `src/diag_environment.py`.
-2. Ver o que ele imprime para fumaça.
-3. Se `"Smoke"` não existir, testar nas variações: `"Smoke Detector"`, `"smoke"`, `"Fire"`.
+1. Num SBC qualquer que já esteja montado, abrir **Programming** e rodar **`src/diag_smoke.py`**
+   (script novo, criado para este teste — o `diag_environment.py` continua intacto).
+2. Ler a primeira rodada: ele varre `Smoke`, `Smoke Detector`, `smoke`, `SMOKE`, `Fire` e
+   `Fire Smoke`, e usa o `CO` como controle. O nome que imprimir um número, mesmo `0.0`, é o ID
+   válido; os outros aparecem como FALHOU.
+3. Se o `CO` também falhar, o problema não é o nome da grandeza — é o pacote não responder naquele
+   nó, e aí o teste muda de natureza.
+4. Achado o ID, o script passa a **injetar fumaça** via `setContribution` e a imprimir a leitura a
+   cada 3 segundos. Isso existe porque a emissão natural do Old Car é de ~3%/hora simulada: numa
+   bancada de duas horas o valor mal sai do lugar, e daria para concluir errado que a leitura não
+   funciona. Para só observar sem alterar o ambiente, ponha `INJETAR = False` no topo.
 
 **Se nenhuma funcionar:** a Cozinha perde a leitura ambiental de fumaça e passa a depender só de
 `"CO"`, que já está confirmado. Nesse caso, anote e **não monte a Cozinha ainda** — é decisão de
