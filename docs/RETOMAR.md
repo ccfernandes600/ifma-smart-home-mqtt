@@ -95,6 +95,10 @@ global que algumas zonas esqueceram de ler.
 
 Tudo que sobrou depende do simulador. O código está fechado.
 
+> **O passo a passo detalhado, bloco a bloco e com checkpoints, está em
+> [BANCADA.md](BANCADA.md)** — inclusive o alerta de que os scripts alterados em 21/09 precisam ser
+> recolados dentro dos nós, porque o Packet Tracer guarda uma cópia.
+
 1. **`Environment.get("Smoke")` na cozinha.** É a única incógnita que pode forçar mudança de
    arquitetura, e o script da cozinha depende dela. Testar primeiro. Se der erro, tentar
    `"Smoke Detector"` ou similar.
