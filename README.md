@@ -8,7 +8,7 @@ Evolução do [projeto V3](https://github.com/ccfernandes600/ifma-smart-home-pac
 
 ## Status do Projeto
 
-**Fase atual:** Arquitetura definida — preparando a implementação dos scripts Python
+**Fase atual:** Código fechado — o que falta depende da bancada no simulador
 
 - [x] Clonagem e análise do projeto V3 (referência)
 - [x] Pesquisa de dispositivos IoT compatíveis com SBC-PT + Python
@@ -16,12 +16,17 @@ Evolução do [projeto V3](https://github.com/ccfernandes600/ifma-smart-home-pac
 - [x] Definição final das zonas e dispositivos (6 zonas + central)
 - [x] Definição da arquitetura MQTT (Opção B: pub/sub sobre TCP+JSON)
 - [x] Mapa de portas e endereçamento IP ([ARQUITETURA.md](docs/ARQUITETURA.md))
-- [ ] Confirmar suporte a `tcp` na MCU-PT — é o teste que pode forçar mudança de arquitetura
+- [x] Confirmar suporte a `tcp` na MCU-PT — **confirmado** (02/07/2026): a Garagem conectou ao broker
 - [x] Desenvolvimento dos scripts Python (SBCs + MCU) — 8 scripts em `src/`:
       broker central, 6 zonas e o publicador do RFID Reader
 - [ ] Validar no simulador as 3 zonas que nunca rodaram: cozinha, quarto e jardim
 - [ ] Montagem da topologia no Packet Tracer
-- [ ] Dashboard web (Netlify)
+- [x] **Painel web servido pela própria Central** (`HTTPServer` :80) — rota `/` com tabela por zona
+      e `/estado` com JSON bruto; prévia fora do simulador em `verificacao/previa_painel.py`
+- [x] **Modo viagem fechado:** Sala, Quarto, Perímetro e Garagem reagem; Cozinha e Jardim ignoram
+      por decisão registrada
+- [ ] Abrir o painel no PC0 com as seis zonas publicando — é o teste que fecha o projeto
+- [ ] Montagem da topologia no Packet Tracer
 - [ ] Documentação final
 
 ---
@@ -113,7 +118,8 @@ ifma-smart-home-mqtt/
 │   ├── LEVANTAMENTO_DISPOSITIVOS_PT9.md         # Catálogo de sensores/atuadores/API
 │   ├── ARQUITETURA.md                           # Broker, mapa de portas, IPs, protocolo
 │   ├── EVOLUCAO_HARDWARE_REAL.md                # Roadmap: migração para dispositivos físicos
-│   └── MONTAGEM_PACKET_TRACER.md                # Guia passo a passo de montagem no PT
+│   ├── MONTAGEM_PACKET_TRACER.md                # Guia passo a passo de montagem no PT
+│   └── RETOMAR.md                               # Revisão de 20-21/09: o que está fechado e o que falta
 ├── src/
 │   ├── broker_central.py                        # Central/broker (TCPServer :1883) — validado no PT
 │   ├── zona_garagem.py                          # Zona MCU (template digital) — validado no PT
@@ -124,7 +130,10 @@ ifma-smart-home-mqtt/
 │   ├── zona_jardim.py                           # Zona SBC (meteo/irrigação) — escrito, a testar
 │   ├── thing_rfid_reader.py                     # Script embutido do RFID Reader (nó MQTT) — validado no PT
 │   └── thing_heating_element_teste.py           # Script embutido do Heating Element (instrumento de teste)
-└── web/                                         # Portais HTML (a criar)
+├── verificacao/
+│   ├── verificar.py                             # Contrato executável: restrições, portas, tópicos
+│   └── previa_painel.py                         # Renderiza o painel da Central fora do simulador
+└── web/                                         # Vazia: o painel é gerado pela Central, não servido daqui
 ```
 
 ---

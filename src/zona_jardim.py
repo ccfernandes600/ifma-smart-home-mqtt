@@ -25,6 +25,11 @@
 # digitalWrite binario (catalogo). Water Level/Wind/ATM Pressure
 # assumidos analogRead (mesma familia do Temperature, ja validado).
 # LIMIARES DE AGUA/LUZ EM RAW -- CALIBRAR com leituras reais no PT.
+#
+# MODO VIAGEM: esta zona ignora o broadcast casa/todas/cmd/modo de
+# proposito. Planta nao viaja: a irrigacao depende da umidade do solo,
+# e a luz do jardim acesa ajuda a simular presenca. Decisao registrada
+# em docs/ARQUITETURA.md, junto com a da Cozinha.
 # =====================================================================
 
 from gpio import *

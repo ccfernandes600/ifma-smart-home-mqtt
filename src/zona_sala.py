@@ -70,6 +70,7 @@ DURACAO_MOVIMENTO = 10  # segundos que "movimento" fica reportado ativo
 
 _mov_expira_em = 0
 _quente = False  # estado da climatizacao (mantido p/ histerese)
+_modo_viagem = False  # chega da Central pelo broadcast casa/todas/cmd/modo
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
@@ -140,8 +141,19 @@ def para_percentual(raw):
 
 def atualizar_climatizacao(temp):
     """Liga AC+Fan quando esquenta; so desliga com folga (histerese),
-    evitando liga/desliga em sequencia no limiar."""
+    evitando liga/desliga em sequencia no limiar.
+
+    Em modo viagem a climatizacao fica desligada: nao ha quem sinta calor,
+    e sem esse corte o AC passaria a viagem inteira ligado por temperatura."""
     global _quente
+    if _modo_viagem:
+        if _quente:
+            log("Modo viagem: climatizacao desligada")
+        _quente = False
+        digitalWrite(AC, LOW)
+        customWrite(FAN, "0")
+        rgb(0, 0, 900)  # azul: sala em modo viagem
+        return
     anterior_quente = _quente
     if temp >= LIM_TEMP_ALTA:
         _quente = True
@@ -210,7 +222,9 @@ def verificar_movimento():
 
 
 def ao_receber(data):
-    """Comando do broker: casa/sala/cmd/<atuador>."""
+    """Comando do broker: casa/sala/cmd/<atuador> ou o broadcast de modo
+    casa/todas/cmd/modo."""
+    global _modo_viagem
     try:
         cmd = loads(data)
     except:
@@ -230,6 +244,9 @@ def ao_receber(data):
             log("Comando recebido: rgb = {}".format(v))
         except:
             log("cmd/rgb invalido (esperado [r,g,b]): {}".format(v))
+    elif alvo.endswith("/cmd/modo"):
+        _modo_viagem = bool(v)
+        log("Modo viagem = {}".format(_modo_viagem))
 
 
 def setup():

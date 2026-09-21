@@ -65,6 +65,7 @@ _mov_expira_em = 0
 _quente = False
 _umidificando = False
 _led_aceso = False
+_modo_viagem = False  # chega da Central pelo broadcast casa/todas/cmd/modo
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
@@ -123,8 +124,17 @@ def para_percentual(raw):
 
 
 def atualizar_climatizacao(temp_c):
-    """AC com histerese -- mesmo padrao validado na Sala."""
+    """AC com histerese -- mesmo padrao validado na Sala.
+
+    Em modo viagem o AC fica desligado: quarto vazio nao precisa de
+    climatizacao, e e o maior consumo da zona."""
     global _quente
+    if _modo_viagem:
+        if _quente:
+            log("Modo viagem: AC desligado")
+        _quente = False
+        digitalWrite(AC, LOW)
+        return
     anterior_quente = _quente
     if temp_c >= LIM_TEMP_ALTA:
         _quente = True
@@ -154,11 +164,15 @@ def atualizar_umidificador(umid_pct):
 
 def atualizar_luz_presenca(luz_raw):
     """Smart LED acende com movimento ATIVO + ambiente escuro; apaga
-    quando o movimento expira ou quando clareia."""
+    quando o movimento expira ou quando clareia.
+
+    Em modo viagem a luz de presenca nao acende: movimento com a casa
+    vazia e assunto de vigilancia, tratado pela Central, e nao motivo
+    para iluminar o comodo para quem quer que esteja ali."""
     global _led_aceso
     escuro = luz_raw <= LIM_ESCURO
     movimento_ativo = _mov_expira_em != 0
-    acender = movimento_ativo and escuro
+    acender = movimento_ativo and escuro and not _modo_viagem
     if acender != _led_aceso:
         _led_aceso = acender
         digitalWrite(LED, HIGH if acender else LOW)
@@ -203,7 +217,9 @@ def verificar_movimento():
 
 
 def ao_receber(data):
-    """Comando do broker: casa/quarto/cmd/<atuador>."""
+    """Comando do broker: casa/quarto/cmd/<atuador> ou o broadcast de modo
+    casa/todas/cmd/modo."""
+    global _modo_viagem
     try:
         cmd = loads(data)
     except:
@@ -222,6 +238,11 @@ def ao_receber(data):
     elif alvo.endswith("/cmd/janela"):
         customWrite(JANELA, "1" if v else "0")
         log("Comando recebido: janela = {}".format(v))
+    elif alvo.endswith("/cmd/modo"):
+        _modo_viagem = bool(v)
+        if _modo_viagem:
+            digitalWrite(UMIDIFICADOR, LOW)  # corta na hora, sem esperar o ciclo
+        log("Modo viagem = {}".format(_modo_viagem))
 
 
 def setup():

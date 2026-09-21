@@ -115,7 +115,27 @@ Para **cada nó**:
 
 ---
 
-## Passo 5 (opcional/futuro)
+## Passo 5 — Abrir o painel web
+
+O painel é servido pela própria Central, sem nó extra.
+
+1. Com a Central rodando, abra o **PC0** → aba *Desktop* → **Web Browser**.
+2. Vá para `http://192.168.1.100` (porta 80, o padrão do navegador do PT).
+3. A página mostra a faixa de situação (CASA OK, VISITANTE, MODO VIAGEM ou ALERTA DE GÁS),
+   o modo atual, quantas zonas estão conectadas e uma tabela por zona com o último valor de
+   cada grandeza. Ela se recarrega sozinha a cada 5 segundos.
+4. Para conferir valor por valor sem depender do layout, use `http://192.168.1.100/estado`,
+   que devolve o estado em JSON.
+
+**Se a página não abrir:** confirme que a Central está com o script rodando (o terminal dela
+registra "Painel web em http://192.168.1.100:80" no arranque) e que o PC0 tem gateway e máscara
+corretos — o navegador do PT não avisa a diferença entre "sem rota" e "servidor fora do ar".
+
+> Para ver o painel fora do simulador, antes de montar a bancada:
+> `python3 verificacao/previa_painel.py` gera `verificacao/previa_painel.html` com dados de
+> exemplo. Use `--alerta` para ver a faixa vermelha do cenário de gás.
+
+## Passo 6 (opcional/futuro)
 
 - **Vitrine MQTT real:** adicione um **IoT Server**, habilite o serviço **MQTT Broker** (aba Services) e mostre pacotes MQTT reais no modo Simulação.
 - **Fundo isométrico:** carregue `assets/planta_casa_zonas.png` como imagem de fundo (Physical Workspace) para posicionar cada nó no cômodo real.

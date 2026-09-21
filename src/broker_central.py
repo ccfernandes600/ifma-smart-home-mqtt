@@ -19,6 +19,7 @@ from gpio import *
 from time import *
 from tcp import *
 from json import *
+from http import *
 
 # --- Portas do proprio SBC Central ---
 BTN_MODO = 0  # D0: Push Button (alterna modo casa/viagem)
@@ -26,6 +27,28 @@ LCD_MESTRE = 1  # D1: LCD mestre (2 linhas)
 SPEAKER = 2  # D2: Home Speaker (avisos sonoros)
 
 PORTA_BROKER = 1883
+PORTA_WEB = 80  # painel HTTP servido pela propria Central
+
+# --- Painel web ---------------------------------------------------------
+# Rotulo e unidade de cada grandeza publicada pelas zonas. O que nao
+# estiver aqui aparece com o nome cru do topico -- zona nova nao quebra
+# o painel, so entra sem rotulo bonito.
+GRANDEZAS = {
+    "temp": ("Temperatura", " C"),
+    "umidade": ("Umidade", " %"),
+    "luz": ("Luminosidade", ""),
+    "co": ("CO", " %"),
+    "co2": ("CO2", " %"),
+    "fumaca": ("Fumaca", " %"),
+    "agua": ("Nivel de agua", ""),
+    "vento": ("Vento", ""),
+    "pressao": ("Pressao", ""),
+    "movimento": ("Movimento", ""),
+    "campainha": ("Campainha", ""),
+    "rfid": ("Ultimo cartao", ""),
+}
+BINARIAS = ("movimento", "campainha")  # 0/1 viram texto, nao numero
+ATUALIZA_EM = 5  # segundos entre recargas automaticas da pagina
 
 # --- Estado global: ultimo valor recebido de cada topico ---
 estado = {}
@@ -88,6 +111,97 @@ def avaliar_regras():
     # So escreve no LCD/loga se o estado da tela realmente mudou
     if tela != _ultima_tela:
         mostrar(tela[0], tela[1])
+
+
+def formatar(grandeza, valor):
+    """Valor pronto para leitura humana: binario vira palavra, o resto
+    ganha a unidade da grandeza."""
+    rotulo, unidade = GRANDEZAS.get(grandeza, (grandeza, ""))
+    if grandeza in BINARIAS:
+        return rotulo, ("SIM" if valor else "nao")
+    return rotulo, "{}{}".format(valor, unidade)
+
+
+def linhas_por_zona():
+    """Agrupa o estado por zona: {"sala": [("Temperatura", "24 C"), ...]}.
+
+    Le o mesmo dicionario que as regras usam, entao o painel nunca mostra
+    um valor diferente do que a Central decidiu -- nao ha segunda copia
+    do estado para sair de sincronia."""
+    zonas = {}
+    for topico in estado:
+        partes = topico.split("/")
+        if len(partes) != 3:
+            continue  # comando ou topico fora do padrao casa/<zona>/<grandeza>
+        zona, grandeza = partes[1], partes[2]
+        rotulo, texto = formatar(grandeza, estado[topico])
+        zonas.setdefault(zona, []).append((rotulo, texto))
+    return zonas
+
+
+def pagina_painel():
+    """Monta o HTML do painel a partir do estado atual.
+
+    Layout em tabela e CSS enxuto de proposito: o navegador do Packet
+    Tracer renderiza isso com folga, e a pagina e montada dentro do laco
+    do SBC -- string grande custa tempo que o broker precisa."""
+    gas = (
+        estado.get("casa/garagem/co", 0) >= LIMIAR_GAS
+        or estado.get("casa/garagem/co2", 0) >= LIMIAR_GAS
+        or estado.get("casa/cozinha/co", 0) >= LIMIAR_GAS
+        or estado.get("casa/cozinha/fumaca", 0) >= LIMIAR_GAS
+    )
+    if gas:
+        situacao, cor = "ALERTA DE GAS", "#c62828"
+    elif estado.get("casa/perimetro/campainha", 0):
+        situacao, cor = "VISITANTE NA PORTA", "#ef6c00"
+    elif modo_viagem:
+        situacao, cor = "MODO VIAGEM", "#1565c0"
+    else:
+        situacao, cor = "CASA OK", "#0b7a3b"
+
+    p = []
+    p.append("<html><head><meta charset='utf-8'>")
+    p.append("<meta http-equiv='refresh' content='{}'>".format(ATUALIZA_EM))
+    p.append("<title>Casa Inteligente - Central</title><style>")
+    p.append("body{font-family:Arial;background:#f4f6f5;color:#101010;margin:0;padding:18px}")
+    p.append("h1{font-size:20px;margin:0}")
+    p.append(".faixa{background:%s;color:#fff;padding:14px 18px;border-radius:6px}" % cor)
+    p.append(".faixa p{margin:6px 0 0;font-size:13px}")
+    p.append("table{border-collapse:collapse;width:100%;margin-top:14px;background:#fff}")
+    p.append("caption{text-align:left;font-weight:bold;padding:10px 8px;background:#e8efeb}")
+    p.append("td{border:1px solid #cfe7d7;padding:7px 10px;font-size:14px}")
+    p.append("td.v{text-align:right;font-weight:bold;width:30%}")
+    p.append("footer{margin-top:16px;font-size:12px;color:#5b6b63}")
+    p.append("</style></head><body>")
+    p.append("<div class='faixa'><h1>{}</h1>".format(situacao))
+    p.append("<p>Modo: {} &middot; zonas conectadas: {} &middot; atualiza a cada {}s</p></div>".format(
+        "viagem" if modo_viagem else "casa", len(clientes), ATUALIZA_EM))
+
+    zonas = linhas_por_zona()
+    if not zonas:
+        p.append("<p>Nenhuma publicacao recebida ainda.</p>")
+    for zona in sorted(zonas):
+        p.append("<table><caption>{}</caption>".format(zona.upper()))
+        for rotulo, texto in sorted(zonas[zona]):
+            p.append("<tr><td>{}</td><td class='v'>{}</td></tr>".format(rotulo, texto))
+        p.append("</table>")
+
+    p.append("<footer>Central 192.168.1.100 &middot; broker na porta {} &middot; ".format(PORTA_BROKER))
+    p.append("dados brutos em <b>/estado</b></footer></body></html>")
+    return "".join(p)
+
+
+def rota_painel(url, response):
+    response.setContentType("text/html")
+    response.send(pagina_painel())
+
+
+def rota_estado(url, response):
+    """Mesma informacao em JSON, para conferir valor por valor sem depender
+    do layout -- util quando a duvida e 'a Central recebeu ou nao?'."""
+    response.setContentType("application/json")
+    response.send(dumps(estado))
 
 
 def enviar_comando(ip, topico, valor):
@@ -187,6 +301,13 @@ def setup():
     servidor.onNewClient(ao_novo_cliente)
     servidor.listen(PORTA_BROKER)
     log("Broker ouvindo na porta {}".format(PORTA_BROKER))
+
+    # Painel web na mesma placa: a Central ja tem o estado completo, entao
+    # servir daqui evita replicar dado e nao exige fan-out para um no web.
+    HTTPServer.route("/", rota_painel)
+    HTTPServer.route("/estado", rota_estado)
+    HTTPServer.start(PORTA_WEB)
+    log("Painel web em http://192.168.1.100:{}".format(PORTA_WEB))
     avaliar_regras()
 
 

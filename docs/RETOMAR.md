@@ -1,4 +1,7 @@
-# Retomar o V4 — revisão de 20/09/2026
+# Retomar o V4 — revisão de 20/09/2026, atualizada em 21/09
+
+> **21/09:** o painel web foi implementado e o modo viagem foi fechado. O que resta do projeto
+> **só acontece com o Packet Tracer aberto** — ver "Ordem sugerida para a bancada", no fim.
 
 Projeto parado desde 18/08 (33 dias). Esta revisão foi feita por leitura estática: nada aqui
 roda fora do Packet Tracer. Serve para a bancada de amanhã render.
@@ -11,7 +14,20 @@ roda fora do Packet Tracer. Serve para a bancada de amanhã render.
 
 ## O que a revisão encontrou
 
-### 1. Dois terços do tráfego existem para um dashboard que não existe
+### 1. ✅ Dois terços do tráfego alimentavam um dashboard que não existia — RESOLVIDO em 21/09
+
+O painel passou a ser servido pela **própria Central**, em `HTTPServer` na porta 80: rota `/` com a
+tabela por zona e rota `/estado` com o JSON bruto. A Central era o único nó com o estado completo,
+então servir dali dispensou replicar dado e dispensou implementar fan-out para um nó web.
+
+Os 15 tópicos que não entravam em regra nenhuma agora têm destino. A distinção que fica: a Central
+**decide** sobre 7 tópicos e **exibe** os 22.
+
+Para ver o painel sem abrir o simulador: `python3 verificacao/previa_painel.py`, que dubla os
+pacotes do PT, carrega o broker como módulo comum e grava o HTML com dados de exemplo (`--alerta`
+mostra o cenário de vazamento de gás).
+
+<details><summary>Diagnóstico original de 20/09</summary>
 
 As zonas publicam **22 tópicos**. A Central consome **7** — os quatro de gás (garagem e cozinha),
 o movimento da garagem, a campainha e o `rfid`. Os **15 restantes** (temperatura, umidade, luz,
@@ -24,6 +40,8 @@ consumidor.
 
 > O verificador imprime "6 lidos, 16 só para o dashboard" porque só enxerga os `estado.get()` de
 > `avaliar_regras()`. O 7º é o `casa/perimetro/rfid`, tratado como evento em `ao_receber()`.
+
+</details>
 
 ### 2. ✅ Fronteira entre regra local e regra central — DECIDIDA em 20/09
 
@@ -40,7 +58,20 @@ O que decidiu a questão a favor da autonomia: zona sem broker continua automati
 só loga o aviso e segue), e centralizar exigiria um mapa zona→IP que o broker não tem — o
 `enviar_comando()` acha o destino por `remoteIP()` e só conhece o `PERIMETRO_IP`.
 
-### 3. Modo viagem é parcial — 2 zonas de 6
+### 3. ✅ Modo viagem — FECHADO em 21/09: 4 zonas reagem, 2 ignoram por decisão
+
+- **Sala:** corta climatização (AC + Fan) e pinta o RGB de azul.
+- **Quarto:** corta AC e umidificador e suspende a luz de presença — movimento com a casa vazia é
+  assunto de vigilância, não motivo para iluminar o cômodo.
+- **Perímetro e Garagem:** já tratavam, no eixo de vigilância.
+- **Cozinha ignora:** incêndio não depende de haver gente em casa.
+- **Jardim ignora:** planta não viaja. A irrigação segue a umidade do solo e a luz acesa ajuda a
+  simular presença.
+
+O modo virou decisão por zona, com justificativa escrita em cada script — e não um interruptor
+global que algumas zonas esqueceram de ler.
+
+<details><summary>Diagnóstico original de 20/09</summary>
 
 `casa/todas/cmd/modo` é broadcast, mas só **Perímetro e Garagem** tratam.
 
@@ -49,6 +80,8 @@ só loga o aviso e segue), e centralizar exigiria um mapa zona→IP que o broker
 - **Sala, Quarto e Jardim ignoram por omissão.** Se a intenção é que o modo viagem mude o
   comportamento da casa inteira — apagar luzes, cortar climatização, reduzir irrigação —, faltam
   essas três. Registrado nas pendências de `ARQUITETURA.md`.
+
+</details>
 
 ### 4. ✅ Higiene do repositório — RESOLVIDA em 20/09
 
@@ -60,15 +93,19 @@ só loga o aviso e segue), e centralizar exigiria um mapa zona→IP que o broker
 
 ## Ordem sugerida para a bancada
 
+Tudo que sobrou depende do simulador. O código está fechado.
+
 1. **`Environment.get("Smoke")` na cozinha.** É a única incógnita que pode forçar mudança de
    arquitetura, e o script da cozinha depende dela. Testar primeiro. Se der erro, tentar
    `"Smoke Detector"` ou similar.
 2. **Rodar cozinha, quarto e jardim**, nessa ordem: a cozinha valida a leitura ambiental, o quarto
    repete o padrão da sala (já validado) e o jardim é o que tem mais sensores por controlador (7 de 10).
-3. **Fechar o dashboard.** Com as três zonas rodando, os 22 tópicos existem de fato e o painel tem o
-   que mostrar. É também o que dá remetente aos 19 comandos.
-4. **Decidir o modo viagem na Sala, no Quarto e no Jardim** (item 3) — é escrita de código, não
-   bancada, mas só faz sentido depois que as três zonas rodarem.
+3. **Abrir o painel no PC0** (`http://192.168.1.100`) com as seis zonas publicando e conferir se as
+   tabelas batem com o que cada zona loga. É o teste que fecha o projeto: se o painel mostra as seis
+   zonas, o caminho zona → Central → tela está inteiro.
+4. **Exercitar o modo viagem pelo botão da Central** e conferir, no painel, a faixa azul e as quatro
+   zonas que reagem. Cozinha e Jardim devem permanecer como estão — é o comportamento projetado.
+5. **Montagem final da topologia e documentação de fechamento.**
 
 ## Rodar o verificador
 
