@@ -3,6 +3,8 @@
 Sessão única, estimada em **2h30 a 3h**. Cada bloco termina com um checkpoint: se ele não
 passar, pare ali e anote, porque os blocos seguintes dependem dele.
 
+Build do simulador nesta sessão: **Packet Tracer 9.0.1.0858**.
+
 Referência de portas e IPs: [MONTAGEM_PACKET_TRACER.md](MONTAGEM_PACKET_TRACER.md).
 Estado do projeto e decisões: [RETOMAR.md](RETOMAR.md).
 

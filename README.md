@@ -149,7 +149,7 @@ ifma-smart-home-mqtt/
 
 ## Tecnologias
 
-- **Cisco Packet Tracer 9.0.0** — simulador de redes e IoT
+- **Cisco Packet Tracer 9.0.0+** — simulador de redes e IoT (bancada de 21/09/2026: build 9.0.1.0858)
 - **Python 3** (MicroPython no SBC-PT) — lógica de automação
 - **MQTT** — protocolo de mensagens IoT (publish/subscribe)
 - **TCP/UDP** — comunicação entre SBCs

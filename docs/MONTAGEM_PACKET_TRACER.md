@@ -2,7 +2,7 @@
 
 Passo a passo para montar a topologia do V4 e carregar os scripts. Referências completas de portas e IPs estão em [ARQUITETURA.md](ARQUITETURA.md).
 
-> **Pré-requisito:** Packet Tracer 9.0.0+. Todos os 7 nós ficam na mesma LAN `192.168.1.0/24` — o pub/sub é local, então **não precisa de roteador** para a automação funcionar (o roteador/NAT só entra depois, se você quiser o portal externo como no V3).
+> **Pré-requisito:** Packet Tracer 9.0.0+. **A bancada de 21/09/2026 rodou no build 9.0.1.0858** — é a versão em que valem as confirmações datadas desse dia. Todos os 7 nós ficam na mesma LAN `192.168.1.0/24` — o pub/sub é local, então **não precisa de roteador** para a automação funcionar (o roteador/NAT só entra depois, se você quiser o portal externo como no V3).
 
 ---
 
