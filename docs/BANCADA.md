@@ -29,10 +29,17 @@ O `zona_jardim.py` só ganhou comentário — recolar é opcional.
 
 ## Bloco 1 — Abrir o arquivo e inventariar · 10 min
 
-O `src/IFMA-MQTT.pkt` é de **04/07/2026**, anterior aos scripts finais. Ele tem a rede base e as
-zonas validadas em julho, mas provavelmente **não tem** Cozinha, Quarto e Jardim.
+O arquivo do projeto é o **`src/IFMA-MQTT.pkt`**, aberto pelo Packet Tracer do Windows em:
 
-1. Abrir `src/IFMA-MQTT.pkt`.
+```
+\\wsl.localhost\Ubuntu-26.04\home\ccfernandes\projetos\ifma-smart-home-mqtt\src\IFMA-MQTT.pkt
+```
+
+Ele é de **04/07/2026**, anterior aos scripts finais: tem a rede base e as zonas validadas em
+julho, mas provavelmente **não tem** Cozinha, Quarto e Jardim. O conteúdo não dá para conferir
+fora do simulador — o PT 9 grava o `.pkt` cifrado, então o inventário abaixo é manual mesmo.
+
+1. Abrir o arquivo pelo caminho acima.
 2. Conferir quais nós existem e anotar:
 
 | Nó | IP | Existe? |
