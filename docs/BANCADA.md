@@ -87,28 +87,33 @@ simulador, e a API de HTTP Server é declarada como "SBC only" na documentação
 
 ---
 
-## Bloco 3 — O teste que pode mudar a arquitetura · 15 min
+## Bloco 3 — ✅ RESPONDIDO em 21/09 · o que sobra são 5 min
 
-`Environment.get("Smoke")` é a única incógnita que ainda pode forçar mudança de projeto, e a
-Cozinha inteira depende dela.
+**`Environment.get("Smoke")` funciona.** A prova veio de graça: a Cozinha subiu e registrou
+`AVISO: sem conexao com o broker -- fumaca nao publicado`. No `verificar_perigo()` a leitura da
+fumaça acontece duas linhas antes da tentativa de publicar, então chegar à publicação significa
+que o `get("Smoke")` retornou sem erro. A última incógnita capaz de mudar a arquitetura caiu.
 
-1. Num SBC qualquer que já esteja montado, abrir **Programming** e rodar **`src/diag_smoke.py`**
-   (script novo, criado para este teste — o `diag_environment.py` continua intacto).
-2. Ler a primeira rodada: ele varre `Smoke`, `Smoke Detector`, `smoke`, `SMOKE`, `Fire` e
-   `Fire Smoke`, e usa o `CO` como controle. O nome que imprimir um número, mesmo `0.0`, é o ID
-   válido; os outros aparecem como FALHOU.
-3. Se o `CO` também falhar, o problema não é o nome da grandeza — é o pacote não responder naquele
-   nó, e aí o teste muda de natureza.
-4. Achado o ID, o script passa a **injetar fumaça** via `setContribution` e a imprimir a leitura a
-   cada 3 segundos. Isso existe porque a emissão natural do Old Car é de ~3%/hora simulada: numa
-   bancada de duas horas o valor mal sai do lugar, e daria para concluir errado que a leitura não
-   funciona. Para só observar sem alterar o ambiente, ponha `INJETAR = False` no topo.
+O que ainda vale fazer, e é rápido: **ver o valor se mexer**. Saber que o ID existe não é o mesmo
+que ver a Cozinha reagir — o limiar é de 20%, e a emissão natural do Old Car é de ~3%/hora
+simulada. Rode `src/diag_smoke.py` num SBC avulso, **no mesmo contêiner físico da Cozinha**, e
+deixe a injeção ligada: o valor sobe a 30/h e você vê sprinkler, janela, fan e alarme dispararem
+dentro da sessão.
+
+1. Arrastar um **SBC-PT avulso**, sem cabo IoT e sem IP — o pacote `environment` não usa rede.
+2. Colocá-lo **no mesmo contêiner físico da Cozinha**, no Physical Workspace. Em outro cômodo ele
+   lê outro ar e mostra zero para sempre.
+3. Programming → New → *Empty — Python* → colar `src/diag_smoke.py` → **Run**.
+4. Acompanhar a leitura subindo e a Cozinha reagir ao cruzar 20%.
+5. Ao terminar, **Stop** e apagar o SBC de diagnóstico.
+
+> Se preferir não mexer no ambiente simulado, ponha `INJETAR = False` no topo do script: ele só lê.
 
 **Se nenhuma funcionar:** a Cozinha perde a leitura ambiental de fumaça e passa a depender só de
 `"CO"`, que já está confirmado. Nesse caso, anote e **não monte a Cozinha ainda** — é decisão de
 projeto, não de bancada.
 
-**Checkpoint:** você tem o nome exato da grandeza, ou a confirmação de que ela não existe.
+**Checkpoint:** você viu a Cozinha disparar por fumaça, e não só o ID responder.
 
 ---
 
