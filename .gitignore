@@ -27,3 +27,6 @@ venv/
 # Temporários
 *.tmp
 *.log
+
+# Saída do previa_painel.py: é gerada, não se versiona
+verificacao/previa_painel.html
