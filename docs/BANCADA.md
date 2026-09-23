@@ -5,6 +5,9 @@ passar, pare ali e anote, porque os blocos seguintes dependem dele.
 
 Build do simulador nesta sessão: **Packet Tracer 9.0.1.0858**.
 
+Para validar nó a nó, com tudo o mais desligado, use o
+[TESTE_ISOLADO.md](TESTE_ISOLADO.md) — protocolo em quatro etapas, com duas camadas por zona.
+
 Referência de portas e IPs: [MONTAGEM_PACKET_TRACER.md](MONTAGEM_PACKET_TRACER.md).
 Estado do projeto e decisões: [RETOMAR.md](RETOMAR.md).
 
