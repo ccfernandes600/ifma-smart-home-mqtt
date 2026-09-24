@@ -30,23 +30,31 @@ SRC = os.path.join(RAIZ, "src")
 # Pacotes que existem no SBC-PT/MCU-PT do Packet Tracer. Fora desta lista, o
 # script simplesmente não roda no simulador — e o erro só aparece na hora da
 # demonstração, com a turma olhando.
+# Espelha a tabela §2.1 de docs/LEVANTAMENTO_DISPOSITIVOS_PT9.md, que é a
+# fonte de verdade da API. Esta lista já divergiu dela uma vez (23/09): aceitava
+# math/random/serial/i2c/spi/sensors/actuators, que não estão documentados, e
+# rejeitava email/networking/ioeclient/usb/realhttp/realtcp/realudp, que existem.
+# Nos dois sentidos o erro é caro: o primeiro deixa passar import que só quebra
+# dentro do simulador; o segundo barra código correto.
+# Pacote novo entra PRIMEIRO no levantamento, depois aqui.
 PACOTES_PT = {
     "gpio",
     "time",
-    "json",
+    "networking",
     "tcp",
     "udp",
     "http",
-    "environment",
-    "physical",
-    "sensors",
-    "actuators",
-    "serial",
-    "i2c",
-    "spi",
-    "math",
-    "random",
+    "realhttp",
+    "realtcp",
+    "realudp",
+    "email",
+    "json",
+    "ioeclient",
     "os",
+    "file",
+    "usb",
+    "physical",
+    "environment",
 }
 
 # Orçamento de portas por controlador (docs/LEVANTAMENTO_DISPOSITIVOS_PT9.md).

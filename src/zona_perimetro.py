@@ -49,6 +49,7 @@ DURACAO_CAMPAINHA = 8  # segundos que "campainha" fica reportada tocada
 _mov_expira_em = 0
 _campainha_expira_em = 0
 _modo_viagem = False  # recebido via broadcast da Central (cmd/modo)
+_seguranca_anterior = (None, None)  # (camera, sirene) -- so loga quando muda
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
@@ -94,10 +95,26 @@ def publicar_se_mudou(grandeza, valor):
 
 def atualizar_seguranca():
     """Camera liga em qualquer movimento (monitoramento). Sirene so
-    soa se houver movimento ATIVO e a casa estiver em modo viagem."""
+    soa se houver movimento ATIVO e a casa estiver em modo viagem.
+
+    Loga a mudanca de estado dos dois atuadores: no simulador o unico
+    retorno visivel e a cor do icone, que some da tela quando a janela
+    do terminal esta aberta. Sem esta linha, "a sirene nao tocou" e
+    "a sirene tocou e eu nao vi" ficam indistinguiveis na bancada."""
+    global _seguranca_anterior
     movimento_ativo = _mov_expira_em != 0
-    customWrite(CAMERA, "1" if movimento_ativo else "0")
-    customWrite(SIRENE, "1" if (movimento_ativo and _modo_viagem) else "0")
+    camera = movimento_ativo
+    sirene = movimento_ativo and _modo_viagem
+    customWrite(CAMERA, "1" if camera else "0")
+    customWrite(SIRENE, "1" if sirene else "0")
+    if (camera, sirene) != _seguranca_anterior:
+        _seguranca_anterior = (camera, sirene)
+        log(
+            "Camera {} | Sirene {}".format(
+                "LIGADA" if camera else "desligada",
+                "LIGADA" if sirene else "desligada",
+            )
+        )
 
 
 def processar_movimento(*args):
@@ -109,7 +126,7 @@ def processar_movimento(*args):
         _mov_expira_em = uptime() + DURACAO_MOVIMENTO
         atualizar_seguranca()
         if novo:
-            publicar("movimento", 1)
+            publicar_se_mudou("movimento", 1)
             log("Movimento detectado (mantido por {}s)".format(DURACAO_MOVIMENTO))
 
 
@@ -119,7 +136,7 @@ def verificar_movimento():
     if _mov_expira_em and uptime() >= _mov_expira_em:
         _mov_expira_em = 0
         atualizar_seguranca()
-        publicar("movimento", 0)
+        publicar_se_mudou("movimento", 0)
         log("Movimento encerrado")
 
 
@@ -131,7 +148,7 @@ def processar_campainha(*args):
         novo = _campainha_expira_em == 0
         _campainha_expira_em = uptime() + DURACAO_CAMPAINHA
         if novo:
-            publicar("campainha", 1)
+            publicar_se_mudou("campainha", 1)
             log("Campainha tocada (visivel por {}s)".format(DURACAO_CAMPAINHA))
 
 
@@ -140,8 +157,22 @@ def verificar_campainha():
     global _campainha_expira_em
     if _campainha_expira_em and uptime() >= _campainha_expira_em:
         _campainha_expira_em = 0
-        publicar("campainha", 0)
+        publicar_se_mudou("campainha", 0)
         log("Campainha encerrada")
+
+
+def reenviar_estado():
+    """Reenvia o estado atual a cada ciclo. Como esta zona so publica em
+    evento, uma publicacao perdida (broker fora do ar naquele instante)
+    ficaria perdida para sempre -- e a Central seguiria mostrando
+    campainha tocando ou movimento ativo indefinidamente, com o Home
+    Speaker ligado. O publicar_se_mudou so poe no fio quando o valor
+    mudou OU quando o envio anterior falhou, entao em regime isto nao
+    gera trafego nenhum."""
+    if not cliente.connected():
+        return  # sem broker nao adianta tentar, e o log viraria enxurrada
+    publicar_se_mudou("movimento", 1 if _mov_expira_em else 0)
+    publicar_se_mudou("campainha", 1 if _campainha_expira_em else 0)
 
 
 def ao_receber(data):
@@ -190,6 +221,7 @@ def main():
         manter_conexao()  # reconecta se o broker tiver reiniciado
         verificar_movimento()
         verificar_campainha()
+        reenviar_estado()  # recupera publicacao perdida sem broker
         sleep(2)
 
 

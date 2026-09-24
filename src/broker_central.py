@@ -79,8 +79,17 @@ def mostrar(linha1, linha2):
     _ultima_tela = (linha1, linha2)
 
 
-def avaliar_regras():
-    """O 'cerebro' da casa: decisoes que dependem de varias zonas."""
+def situacao_da_casa():
+    """Classifica o estado da casa UMA vez, para o LCD e o painel web
+    nunca discordarem. Devolve (linha1, linha2, titulo_web, cor, som).
+
+    Antes disto o calculo de gas estava escrito duas vezes -- aqui e no
+    painel -- e a faixa do painel nao conhecia a intrusao: o LCD podia
+    gritar INTRUSAO! enquanto a tela seguia azul de modo viagem.
+
+    As duas primeiras linhas cabem em 14 caracteres: o LCD do PT corta o
+    excedente sem avisar (bancada de 23/09, "Casa monitorada" virou
+    "Casa monitorad"). Texto novo aqui: contar antes de escrever."""
     # Gas/fumaca so conta como perigo a partir do mesmo limiar usado nas
     # zonas (LIMIAR_GAS) -- nao basta ser != 0, senao alerta cedo demais
     gas = (
@@ -90,27 +99,36 @@ def avaliar_regras():
         or estado.get("casa/cozinha/fumaca", 0) >= LIMIAR_GAS
     )
     campainha = estado.get("casa/perimetro/campainha", 0)
-    movimento_garagem = estado.get("casa/garagem/movimento", 0)
-    intrusao = movimento_garagem and modo_viagem  # movimento + ninguem esperado em casa
+    # ONDE houve movimento importa mais que ter havido: a linha 2 do LCD
+    # e a unica pista de para onde a pessoa deve olhar.
+    if estado.get("casa/garagem/movimento", 0):
+        onde = "Na garagem"
+    elif estado.get("casa/perimetro/movimento", 0):
+        onde = "No portao"
+    else:
+        onde = ""
 
-    digitalWrite(SPEAKER, HIGH if (gas or campainha) else LOW)
+    som = bool(gas or campainha)  # o que merece acordar o Home Speaker
 
     if gas:
-        tela = ("ALERTA DE GAS", "Verifique a casa")
-    elif intrusao:
-        tela = ("INTRUSAO!", "Movimento na garagem")
-    elif campainha:
-        tela = ("VISITANTE", "Campainha tocada")
-    elif movimento_garagem:
-        tela = ("MOVIMENTO", "Garagem (normal)")
-    elif modo_viagem:
-        tela = ("MODO VIAGEM", "Casa monitorada")
-    else:
-        tela = ("CASA OK", "Modo normal")
+        return "ALERTA DE GAS", "Verifique casa", "ALERTA DE GAS", "#c62828", som
+    if onde and modo_viagem:  # movimento + ninguem esperado em casa
+        return "INTRUSAO!", onde, "INTRUSAO " + onde.upper(), "#b71c1c", som
+    if campainha:
+        return "VISITANTE", "Campainha", "VISITANTE NA PORTA", "#ef6c00", som
+    if onde:
+        return "MOVIMENTO", onde, "MOVIMENTO " + onde.upper(), "#ef6c00", som
+    if modo_viagem:
+        return "MODO VIAGEM", "Monitorando", "MODO VIAGEM", "#1565c0", som
+    return "CASA OK", "Modo normal", "CASA OK", "#0b7a3b", som
 
-    # So escreve no LCD/loga se o estado da tela realmente mudou
-    if tela != _ultima_tela:
-        mostrar(tela[0], tela[1])
+
+def avaliar_regras():
+    """O 'cerebro' da casa: decisoes que dependem de varias zonas."""
+    linha1, linha2, _titulo, _cor, som = situacao_da_casa()
+    digitalWrite(SPEAKER, HIGH if som else LOW)
+    if (linha1, linha2) != _ultima_tela:  # so escreve/loga quando muda
+        mostrar(linha1, linha2)
 
 
 def formatar(grandeza, valor):
@@ -145,20 +163,7 @@ def pagina_painel():
     Layout em tabela e CSS enxuto de proposito: o navegador do Packet
     Tracer renderiza isso com folga, e a pagina e montada dentro do laco
     do SBC -- string grande custa tempo que o broker precisa."""
-    gas = (
-        estado.get("casa/garagem/co", 0) >= LIMIAR_GAS
-        or estado.get("casa/garagem/co2", 0) >= LIMIAR_GAS
-        or estado.get("casa/cozinha/co", 0) >= LIMIAR_GAS
-        or estado.get("casa/cozinha/fumaca", 0) >= LIMIAR_GAS
-    )
-    if gas:
-        situacao, cor = "ALERTA DE GAS", "#c62828"
-    elif estado.get("casa/perimetro/campainha", 0):
-        situacao, cor = "VISITANTE NA PORTA", "#ef6c00"
-    elif modo_viagem:
-        situacao, cor = "MODO VIAGEM", "#1565c0"
-    else:
-        situacao, cor = "CASA OK", "#0b7a3b"
+    _l1, _l2, situacao, cor, _som = situacao_da_casa()
 
     p = []
     p.append("<html><head><meta charset='utf-8'>")
@@ -231,9 +236,9 @@ def processar_rfid(tag):
     if tag_num in CARTOES_VALIDOS:
         if enviar_comando(PERIMETRO_IP, "casa/perimetro/cmd/porta", 1):
             _porta_fecha_em = uptime() + DURACAO_PORTA_RFID
-            mostrar("ACESSO LIBERADO", "Cartao {}".format(tag_num))
+            mostrar("ACESSO OK", "Cartao {}".format(tag_num))
     else:
-        mostrar("CARTAO INVALIDO", "ID {}".format(tag_num))
+        mostrar("CARTAO NEGADO", "ID {}".format(tag_num))
 
 
 def verificar_porta_rfid():

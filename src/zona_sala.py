@@ -102,8 +102,10 @@ def publicar_se_mudou(grandeza, valor):
 
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
-    Padrao validado no RFID Reader -- reinicio da Central deixa de
-    exigir reinicio das zonas."""
+    ATENCAO -- na bancada de 21/09 isto NAO cobriu o reinicio da Central:
+    o objeto cliente seguiu reportando connected() com o servidor fora do
+    ar (conexao fantasma) e a zona ficou muda. Regra operacional enquanto
+    nao houver heartbeat: recolou a Central, reinicie as zonas."""
     global _loops_sem_conexao
     if cliente.connected():
         _loops_sem_conexao = 0

@@ -1,4 +1,64 @@
-# Retomar o V4 — revisão de 20/09/2026, atualizada em 21/09
+# Retomar o V4 — revisão de 20/09/2026, atualizada em 23/09
+
+## Bancada de 23/09 — Central e Perímetro aprovados
+
+**Etapa 1 (Central sozinha): passou nos seis passos.** Broker, painel web, `/estado`, LCD e botão
+de modo, tudo sem nenhuma zona no ar.
+
+**Perímetro (.21), camada B: passou.** Movimento, campainha, broadcast de modo, Camera, Sirene em
+modo viagem e a cadeia RFID inteira (Card → Reader → broker → whitelist → `cmd/porta` → Door abre
+e fecha em 5 s).
+
+**Seis correções de código saíram desta bancada:**
+
+1. **Perímetro publicava sem `publicar_se_mudou`** — era a única das seis zonas assim. Publicação
+   perdida ficava perdida para sempre, e a Central seguiria com campainha tocando e o Home Speaker
+   ligado. Agora usa a função e reenvia o estado a cada ciclo (com guarda de conexão, senão o log
+   vira enxurrada sem broker).
+2. **RFID Reader marcava a tag como publicada antes de saber se o envio funcionou.** Sem broker, a
+   leitura se perdia calada. Visto ao vivo: o primeiro `publicar()` falhou e o segundo funcionou.
+3. **LCD da Central corta em 14 caracteres** — cinco das seis telas perdiam o fim. `INTRUSAO! /
+   Movimento na garagem` virava `Movimento na g`, escondendo justamente onde olhar.
+4. **LCD e painel discordavam:** o cálculo de gás estava escrito duas vezes e a faixa do painel não
+   conhecia a intrusão. Unificados em `situacao_da_casa()`.
+5. **Movimento no perímetro não acendia nada na Central** — só a garagem tinha tela. Agora as duas
+   têm, com a linha 2 dizendo onde.
+6. **Docstring do `manter_conexao()` da Sala afirmava o contrário do que a bancada mostra.**
+
+**Pendências abertas nesta bancada:**
+
+- A intrusão **não aciona o Home Speaker** da Central (só gás e campainha acionam). A sirene do
+  perímetro soa localmente, mas a Central fica calada no evento mais grave. Decisão do professor.
+- `cmd/sirene` e `cmd/camera` são sobrescritos pelo `atualizar_seguranca()` no evento seguinte.
+  Só aparece quando o painel ganhar botões.
+- **A Porta do perímetro não tem prazo local:** quem fecha é a Central, 5 s depois. Central fora do
+  ar entre o abrir e o fechar deixa a porta aberta indefinidamente.
+
+### Depois de tudo validado: monitoramento de saúde e alarme por e-mail
+
+Ideia do professor em 23/09, adiada por decisão dele para o fim da validação. Ordem obrigatória —
+a segunda parte não faz sentido sem a primeira:
+
+**1. Heartbeat (`casa/<zona>/vivo` a cada ~10 s).** É pré-condição, não enfeite: como as zonas usam
+`publicar_se_mudou()`, silêncio é o comportamento normal de zona saudável. Sem heartbeat, qualquer
+verificação por tempo acusa zona viva como morta. Ele paga em três lugares:
+
+- painel honesto (`atualizado há Xs`, zona esmaecida quando envelhece) — hoje uma zona parada há dez
+  minutos é idêntica a uma publicando agora;
+- checklist de saúde na Central, com critério em vez de chute;
+- **a conexão fantasma**: se a Central responder ao heartbeat, a zona passa a saber que o broker
+  morreu. Hoje ela não tem como descobrir, porque `connected()` mente — foi o que custou 40 min
+  nesta bancada.
+
+**2. Alarme por e-mail.** O pacote `email` existe no PT (§2.6 do levantamento): `EmailClient.setup()`,
+`.send()` e `onSend(callback)`, que confirma se o envio saiu — alarme que falha calado é pior que
+alarme nenhum. Exige um Server-PT com SMTP/POP3, domínio e contas; testar isolado, como o
+`diag_smoke.py`.
+
+**Regra de projeto para esse alarme: enviar por transição, não por estado.** Uma mensagem quando a
+zona cai, uma quando volta, com carência de alguns minutos. Zona instável mandando um e-mail a cada
+20 s faz o destinatário criar filtro — e aí o alarme morreu de vez.
+
 
 ## ONDE PARAMOS — bancada de 21/09/2026 (build 9.0.1.0858)
 
@@ -18,7 +78,7 @@ Packet Tracer e precisa ser salva e commitada.
 **Estado das zonas quando paramos:** publicando **3** (Cozinha, Quarto, Sala) e conectados **5** —
 a leitura provável é Perímetro e RFID Reader conectados e calados, que é o comportamento correto
 deles. **Garagem e Jardim não haviam subido**; era o que íamos conferir no terminal de cada uma.
-O alvo é conectados 7 e publicando 5.
+O alvo é conectados 7 e publicando 6 — o Perímetro passou a publicar o estado ao conectar (23/09).
 
 **Dois defeitos achados e corrigidos hoje:**
 

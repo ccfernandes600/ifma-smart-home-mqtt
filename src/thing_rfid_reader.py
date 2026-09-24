@@ -48,8 +48,9 @@ def publicar(grandeza, valor):
         cliente.send(
             dumps({"topic": "casa/{}/{}".format(ZONA, grandeza), "payload": valor})
         )
-    else:
-        print("AVISO: sem conexao com o broker -- leitura nao publicada")
+        return True
+    print("AVISO: sem conexao com o broker -- leitura nao publicada")
+    return False
 
 
 def manter_conexao():
@@ -95,9 +96,11 @@ def loop():
         cardID = lastCardID = 0
     else:
         if lastCardID != cardID:
-            lastCardID = cardID
-            publicar("rfid", cardID)
-            print("RFID leu tag: {}".format(cardID))
+            # So marca como lida se o envio funcionou: senao o cartao
+            # precisaria ser afastado e reaproximado para tentar de novo.
+            if publicar("rfid", cardID):
+                lastCardID = cardID
+                print("RFID leu tag: {}".format(cardID))
 
     delay(DELAY_TIME)
 

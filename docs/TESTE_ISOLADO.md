@@ -123,8 +123,8 @@ Só depois que as seis passaram em A e B.
 
 | Verificação | Esperado |
 |---|---|
-| Painel | `conectados: 7` (6 zonas + Reader) · `publicando: 5` |
-| Perímetro | entra no "publicando" só quando houver movimento ou campainha |
+| Painel | `conectados: 7` (6 zonas + Reader) · `publicando: 6` |
+| Perímetro | publica `movimento: nao` e `campainha: nao` assim que conecta (mudou em 23/09) |
 | Modo viagem | quatro zonas reagem, Cozinha e Jardim seguem iguais |
 | Gás na Cozinha e na Garagem | os dois levam o painel a vermelho |
 | Carga | os logs continuam fluindo sem engasgo perceptível |
@@ -144,9 +144,26 @@ Mensagem:      (colar a linha exata do terminal)
 Já tentado:    reiniciei o script; conferi que a janela está em D3
 ```
 
-## Duas regras operacionais que já custaram tempo
+## Quatro regras operacionais que já custaram tempo
 
-1. **Recolou a Central, reinicie as zonas.** Elas não percebem a queda do broker e ficam com
-   conexão fantasma. Sintoma: painel com `conectados: 0`.
+1. **Zona que rodou com a Central fora do ar precisa de Stop → Run depois que a Central subir.**
+   Não importa quem caiu primeiro. Enquanto a Central está parada, as tentativas de `connect()`
+   deixam o objeto cliente reportando conexão; quando a Central sobe de verdade, o
+   `manter_conexao()` não tenta de novo porque acha que já está dentro.
+   **Sintoma que engana:** a zona funciona — sensores, atuadores, log — e não emite nenhum
+   `AVISO: sem conexao`, porque `connected()` mente. O que morre é só a rede, nos dois sentidos:
+   nada chega na Central e nenhum broadcast de modo chega na zona.
+   **Como confirmar em 5 segundos:** aperte o botão de modo da Central. Se a zona não logar
+   `Modo viagem = ...`, é conexão fantasma. (Medido na bancada de 23/09, no Perímetro.)
 2. **Editar o arquivo no repositório não muda o simulador.** O script roda a partir da cópia
    colada dentro do nó.
+3. **Reinicie o Packet Tracer de tempos em tempos numa bancada longa.** Ele degrada com o
+   acúmulo de janelas abertas e fechadas — cada aba Programming carrega um interpretador, e depois
+   de algumas horas com muitos nós o programa trava. Travou em 23/09, depois de uma sessão de
+   ~2 h com as janelas de seis nós. **Salve o `.pkt` antes de qualquer operação pesada**
+   (importar ambiente, montar zona nova): é a diferença entre perder cinco minutos e perder a
+   sessão. Lembrando que o ambiente mora dentro do `.pkt` — salvar antes de importar significa
+   reimportar depois.
+4. **A aba aberta do editor não recarrega sozinha.** Se o arquivo mudou no disco enquanto a aba
+   estava aberta, copiar dali cola a versão velha — e o sintoma é a correção "não ter funcionado".
+   Feche e reabra a aba antes de copiar. (Custou uma rodada inteira em 23/09.)
