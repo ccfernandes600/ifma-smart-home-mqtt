@@ -8,11 +8,16 @@
 # tem Direct/Local Control (mesma familia de dispositivos do CO da
 # Garagem e do RFID Reader).
 #
-# envID "CO" ja confirmado empiricamente (Garagem). envID "Smoke" e
-# INFERIDO (nao testado ainda por nos) a partir da doc oficial do Old
-# Car, que lista fumaca como um dos tipos de emissao ao lado de CO/CO2
-# -- mesma familia de variavel de ambiente. CONFIRMAR ao testar: se
-# Environment.get("Smoke") der erro, tentar "Smoke Detector" ou similar.
+# envID "CO" confirmado na Garagem. envID "Smoke" CONFIRMADO na bancada
+# de 21/09/2026 (PT 9.0.1.0858): Environment.get("Smoke") existe e
+# retorna sem erro. Nao precisa mais testar "Smoke Detector" nem
+# similares -- a incognita que segurava esta zona esta resolvida.
+#
+# ATENCAO ao ambiente: o valor lido e o do CONTEINER onde o SBC esta,
+# nao o da cidade. Conteiner aninhado nasce de outro template e roda o
+# clima generico da Cisco -- ver simulacao/README.md. Injetar fumaca
+# com diag_smoke.py exige que o setContribution caia no MESMO conteiner
+# que este script le, senao o numero nao mexe e parece defeito de codigo.
 #
 # Perigo (fumaca OU CO acima do limiar) aciona TODOS os atuadores juntos
 # -- mesmo espirito do "tudo ao mesmo tempo" da Garagem: Fire Sprinkler
@@ -53,7 +58,9 @@ ALARME = 5  # D5: Alarm            (digitalWrite -- confirmado)
 # D6-D9 livres (Smoke/CO nao ocupam porta -- lidos via environment)
 
 LIMIAR_GAS = 20  # % -- mesmo limiar usado na Garagem
-PASSO_PUBLICACAO = 10  # quantizacao de temp/umidade antes de publicar
+# Sem PASSO_PUBLICACAO aqui: temp sai em graus inteiros e umidade em %
+# inteiro, que ja e granularidade suficiente. Quantizar em passos de 10
+# daria temperatura de 10 em 10 graus.
 
 _perigo = False
 cliente = TCPClient()
@@ -96,11 +103,6 @@ def manter_conexao():
         _loops_sem_conexao = 0
         log("Reconectando ao broker {}...".format(BROKER_IP))
         cliente.connect(BROKER_IP, BROKER_PORT)
-
-
-def quantizar(valor):
-    """Arredonda a leitura analogica para multiplos de PASSO_PUBLICACAO."""
-    return int(valor // PASSO_PUBLICACAO) * PASSO_PUBLICACAO
 
 
 def para_celsius(raw):
