@@ -5,6 +5,36 @@
 **Etapa 1 (Central sozinha): passou nos seis passos.** Broker, painel web, `/estado`, LCD e botão
 de modo, tudo sem nenhuma zona no ar.
 
+**Sala (.22), camada B: passou em parte — a temperatura continua em aberto.**
+
+Passou: conexão, publicação das quatro grandezas, conversão de temperatura calibrada (raw 650 →
+27,08 °C pela fórmula contra 27,1 °C do termômetro do simulador, 0,02 de erro), climatização com
+histerese **em malha fechada real** — o AC do PT esfria o ambiente de verdade, então ele ligou a
+30 °C, puxou a temperatura para baixo e desligou a 28 —, movimento com hold, e modo viagem cortando
+AC e Fan com o RGB indo para azul mesmo com a temperatura acima de 30. O corte com calor é o que
+prova a precedência do modo sobre o termostato.
+
+**NÃO passou, e é o ponto onde paramos:** depois disso, a temperatura lida divergiu do painel
+`Environments` — a umidade batia, a temperatura não. Chegou a marcar **−1 °C** com a cidade em São
+Luís, e antes disso passou minutos 12 graus abaixo. A sessão terminou sem fechar o diagnóstico.
+
+> Uma versão anterior deste documento dizia que a Sala "passou por inteiro". **Estava errado** — a
+> frase descrevia só a primeira metade da bancada, antes de o problema de temperatura aparecer.
+
+**Três hipóteses, e o instrumento que separa as três.** `src/diag_temperatura.py` (criado em 25/09)
+loga, lado a lado, o que o sensor GPIO lê, o que o `Environment` devolve e a **taxa em °C por hora
+simulada**:
+
+| | Hipótese | Assinatura no log |
+|---|---|---|
+| H1 | **Limite de taxa.** Só `Ambient Temperature` tem `MIN_RATE/MAX_RATE = ±0,00138889`/s no XML, o que dá **5 °C por hora simulada**; todas as outras grandezas saem com ±1000, instantâneo. Se o cômodo começou longe da curva, ele rampa — e todo valor no meio do caminho está em trânsito. | a coluna `C/h` **cola em +5,0 ou −5,0** |
+| H2 | **Contêiner errado.** O cômodo roda o template genérico da Cisco, não o de São Luís (ver `simulacao/README.md`). | `C/h` perto de **0** e o valor parado num número que a curva de São Luís nunca produz |
+| H3 | **Sensor contra ambiente.** A zona lê por `analogRead`; o painel mostra `Ambient Temperature`. | as colunas **SENSOR e AMBIENTE divergem** |
+
+H1 e H2 podem ser verdadeiras ao mesmo tempo, e aí se somam: alvo errado *e* convergência lenta.
+Rodar o diagnóstico uns três minutos, com o multiplicador de tempo ligado se quiser acelerar — a
+taxa é calculada sobre o relógio simulado.
+
 **Perímetro (.21), camada B: passou.** Movimento, campainha, broadcast de modo, Camera, Sirene em
 modo viagem e a cadeia RFID inteira (Card → Reader → broker → whitelist → `cmd/porta` → Door abre
 e fecha em 5 s).

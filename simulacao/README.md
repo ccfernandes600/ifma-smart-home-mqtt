@@ -75,6 +75,31 @@ arquivo pelo nome.** O caminho que funciona (confirmado em 23/09/2026, PT 9.0.1)
 > ficou no lugar — dois arquivos com nome parecido e conteúdo diferente são fáceis de trocar, e o
 > sintoma aparece só meia hora depois, quando uma automação não dispara no horário previsto.
 
+### ⚠️ Cada contêiner tem o seu ambiente — inclusive os de dentro
+
+Trocar o `Default City.xml` resolve a cidade. **Não resolve os cômodos.** Um contêiner aninhado
+nasce de outro template (`Default Container.xml`, `Default Building.xml`, `Default Closet.xml`) e
+roda o clima genérico da Cisco, independente do que a cidade estiver fazendo.
+
+O sintoma, medido em 23/09/2026: a cidade em São Luís e o cômodo com o SBC marcando **−1 °C** —
+valor que não existe na cidade real e que a curva seca nunca produz, porque ela não desce de
+24,5 °C. Antes de chegar nesse absurdo, o cômodo passou minutos marcando 12 graus a menos que a
+cidade, o que parecia atraso de propagação e não era: eram dois climas diferentes rodando ao mesmo
+tempo, cada um no seu ciclo.
+
+**Como saber, em dois segundos:** a janela `Environments` mostra o campo `NOTES` abaixo do
+`Current Time`. O gerador grava ali a descrição do perfil — `Sao Luis (MA), estacao seca`. Se a
+Location selecionada mostra essa linha, está com o nosso ambiente; se está vazia, está de fábrica.
+
+**Como corrigir:** trocar o `Location:` para cada contêiner que tenha dispositivo dentro e
+importar o XML ali também. Ou copiar o arquivo por cima dos outros `Default *.xml` da pasta de
+templates, para que contêiner novo já nasça no clima certo.
+
+**Por que isso engana:** a leitura do script está sempre coerente consigo mesma — o `analogRead` e
+o `Environment.get()` concordam, porque os dois leem o mesmo contêiner. Quem discorda é o painel
+que você tem aberto, que pode ser de outra Location. Dá para perder bastante tempo procurando erro
+no código antes de desconfiar de qual ambiente está sendo lido.
+
 ### Arquivo enxuto, para quem vai deixar como template
 
 Os templates da própria Cisco têm 125 KB. Um ambiente com 20 keyframes passa de 800 KB, porque
@@ -250,6 +275,24 @@ Na mesma medição apareceu um efeito que engana: enquanto o ambiente sobe rápi
 atrás**. No mesmo intervalo, `raw 646` dava 26,30 °C contra 27,0 °C do ambiente — 0,7 °C de
 defasagem, que some quando a rampa desacelera. Ao conferir a calibração, use uma leitura com o
 ambiente estável, não uma tirada no meio da subida.
+
+### Diagnóstico rápido: a umidade bate e a temperatura não
+
+Se, depois de importar, a umidade do painel coincidir com o que a zona publica **e a temperatura
+não**, não procure contêiner errado nem erro de leitura. É o `MAX_RATE`.
+
+A `Ambient Temperature` é a **única** grandeza do catálogo com limite de variação (±5 °C por hora
+simulada). Todas as outras vêm com ±1000, que na prática é ilimitado. Então, no instante do
+import:
+
+- umidade, nuvens, pressão e nível de água **saltam** para o valor da curva
+- a temperatura **rampeia** de onde estava, a 2,5 °C/min na escala 1:30
+
+Medido em 23/09: painel em 26,12 °C e umidade 83,69 %, com a zona publicando umidade 83 e
+temperatura 5. A umidade bater é o que prova que a zona está lendo o contêiner certo — se fosse
+Location errada, as duas estariam divergentes.
+
+Basta esperar: `(alvo − atual) ÷ 2,5` dá os minutos que faltam.
 
 ### O ambiente demora a "esquentar"
 
