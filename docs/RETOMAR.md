@@ -13,6 +13,10 @@ sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do ed
 - **Temperatura, medição parcial, não é conclusão:** a Sala subiu de 2 °C a 24 °C em 9,3 min, cerca de
   2,37 °C/min, perto da rampa de 2,5 °C/min da H1. Sensor e ambiente coerentes nas 3 primeiras leituras.
 
+**Critério de V4 finalizado, aceito em 03/11/2026:** seis zonas aprovadas, Bloco 7 com
+`conectados: 7 · publicando: 6`, causa da temperatura registrada, `.pkt` salvo e README final. Alarme por e-mail,
+botões no painel e vitrine ficam para a V4.1.
+
 **Bloco 3 fechado — a causa da temperatura:**
 
 | Hipótese | Resultado | Medição |
