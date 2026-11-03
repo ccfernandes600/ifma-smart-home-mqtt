@@ -10,7 +10,11 @@ DENTRO do Packet Tracer, não no host. Não dá para executar nada aqui.
 Mas ele tem regras normativas fortes — restrição pedagógica do IFMA, orçamento
 de portas por controlador, gotchas do simulador — e essas regras são
 verificáveis por leitura estática. Sem esse verificador, revisar o trabalho de
-outro agente significa reler 1.900 linhas de MicroPython à mão.
+outro agente significa reler todo o MicroPython à mão.
+
+A última seção roda `testes_logica.py`, que exercita a lógica com dublês do PT.
+Foi medido com defeitos plantados em 03/11/2026: ao acrescentar regra, plante o
+defeito numa cópia e confira que ela pega.
 
     python3 verificacao/verificar.py
 
@@ -22,6 +26,7 @@ política, só torna executável a que já existe.
 import ast
 import os
 import re
+import subprocess
 import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,6 +67,32 @@ PACOTES_PT = {
 # herdado do V3 e são proibidas.
 LIMITE_PORTAS = {"SBC": 10, "MCU": 6}
 
+# A API certa de cada dispositivo, pelo nome da constante da porta. Fan com
+# digitalWrite não dá erro nenhum: o Fan simplesmente não gira. Vem da doc de cada
+# dispositivo (docs/LEVANTAMENTO_DISPOSITIVOS_PT9.md §1.2).
+SO_CUSTOM = {"FAN", "PORTA", "JANELA", "SIRENE", "CAMERA", "LCD_MESTRE"}
+SO_DIGITAL = {
+    "AC", "ALARME", "SPEAKER", "SPRINKLER", "UMIDIFICADOR", "LED",
+    "IRRIGACAO", "DRENO", "LUMINARIA",
+}
+ESCRITAS = {"digitalWrite", "analogWrite", "customWrite"}
+
+# De que pacote do PT vem cada nome. Import esquecido só quebra dentro do simulador.
+API_DOS_PACOTES = {
+    "gpio": {
+        "pinMode", "digitalRead", "digitalWrite", "analogRead", "analogWrite",
+        "customRead", "customWrite", "add_event_detect", "HIGH", "LOW", "IN", "OUT",
+    },
+    "time": {"sleep", "uptime", "ctime", "delay"},
+    "tcp": {"TCPClient", "TCPServer"},
+    "json": {"dumps", "loads"},
+    "http": {"HTTPServer"},
+    "environment": {"Environment"},
+}
+
+LIMITE_LCD = 14  # o LCD do PT corta o excedente sem avisar (bancada de 23/09)
+IP_BROKER = "192.168.1.100"
+
 falhas = []
 
 
@@ -92,6 +123,14 @@ def controlador(texto):
     if re.search(r"\bNO MCU\b|\bMCU-PT\b|\(MCU\b", cabeca):
         return "MCU"
     return "SBC"
+
+
+def nos_da_automacao():
+    """Broker, zonas e RFID Reader; ficam de fora os diagnósticos e os instrumentos."""
+    return [
+        c for c in arquivos
+        if re.match(r"(broker_central|zona_\w+|thing_rfid_reader)\.py$", os.path.basename(c))
+    ]
 
 
 def portas_declaradas(texto):
@@ -187,8 +226,14 @@ def _customread_strip():
     # teste e falha na demonstração — foi o gotcha nº 1 do V3.
     ruins = []
     for caminho in arquivos:
-        for i, linha in enumerate(fonte(caminho).splitlines(), 1):
-            if "customRead(" in linha and ".strip()" not in linha:
+        linhas = fonte(caminho).splitlines()
+        for i, linha in enumerate(linhas, 1):
+            if "customRead(" not in linha or ".strip()" in linha:
+                continue
+            # Também vale `x = customRead(p)` seguido de `x = x.strip()`.
+            m = re.match(r"\s*(\w+)\s*=", linha)
+            seguinte = linhas[i] if i < len(linhas) else ""
+            if not (m and m.group(1) + ".strip()" in seguinte):
                 ruins.append(f"{os.path.basename(caminho)}:{i}")
     if ruins:
         raise AssertionError("customRead sem .strip(): " + ", ".join(ruins))
@@ -211,8 +256,169 @@ def _mcu_sem_analogicas():
     return None
 
 
+def _mcu_so_d0_d5():
+    # A contagem de portas não basta: quatro portas com uma em D7 cabem no
+    # orçamento e não existem na placa.
+    ruins = []
+    for caminho in arquivos:
+        texto = fonte(caminho)
+        if controlador(texto) != "MCU":
+            continue
+        for nome, valor, _ in portas_declaradas(texto):
+            if valor > 5:
+                ruins.append(f"{os.path.basename(caminho)} {nome}=D{valor}")
+    if ruins:
+        raise AssertionError("MCU só tem D0–D5: " + ", ".join(ruins))
+    return None
+
+
+def _api_do_dispositivo():
+    ruins = []
+    for caminho in nos_da_automacao():
+        for no in ast.walk(ast.parse(fonte(caminho))):
+            if not (isinstance(no, ast.Call) and isinstance(no.func, ast.Name)):
+                continue
+            if no.func.id not in ESCRITAS or not no.args:
+                continue
+            alvo = no.args[0]
+            nome = os.path.basename(caminho)
+            if isinstance(alvo, ast.Constant):
+                ruins.append(f"{nome}:{no.lineno} pino literal em {no.func.id}")
+            elif isinstance(alvo, ast.Name):
+                if alvo.id in SO_CUSTOM and no.func.id != "customWrite":
+                    ruins.append(f"{nome}:{no.lineno} {alvo.id} exige customWrite")
+                if alvo.id in SO_DIGITAL and no.func.id != "digitalWrite":
+                    ruins.append(f"{nome}:{no.lineno} {alvo.id} exige digitalWrite")
+    if ruins:
+        raise AssertionError("; ".join(ruins))
+    return None
+
+
+def _ao_receber():
+    # O PT chama onReceive com UM argumento. Com dois, o erro só aparece quando
+    # chega a primeira mensagem; sem o registro, a zona fica surda em silêncio.
+    ruins = []
+    for caminho in nos_da_automacao():
+        texto = fonte(caminho)
+        for no in ast.parse(texto).body:
+            if isinstance(no, ast.FunctionDef) and no.name == "ao_receber":
+                if len(no.args.args) != 1:
+                    ruins.append(f"{os.path.basename(caminho)}: ao_receber precisa de 1 argumento")
+                if ".onReceive(ao_receber)" not in texto:
+                    ruins.append(f"{os.path.basename(caminho)}: ao_receber não foi registrado")
+    if ruins:
+        raise AssertionError("; ".join(ruins))
+    return None
+
+
+def _nada_orfao():
+    # Função ou constante de porta que ninguém usa costuma ser fiação esquecida,
+    # como um add_event_detect removido: o sensor para de reagir sem erro nenhum.
+    ruins = []
+    for caminho in nos_da_automacao():
+        arvore = ast.parse(fonte(caminho))
+        usados = {n.id for n in ast.walk(arvore) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        usados |= {n.attr for n in ast.walk(arvore) if isinstance(n, ast.Attribute)}
+        for no in arvore.body:
+            nomes = []
+            if isinstance(no, ast.FunctionDef):
+                nomes = [no.name]
+            elif (
+                isinstance(no, ast.Assign)
+                and isinstance(no.value, ast.Constant)
+                and type(no.value.value) is int
+            ):
+                nomes = [a.id for a in no.targets if isinstance(a, ast.Name) and a.id.isupper()]
+            ruins += [f"{os.path.basename(caminho)}: {n}" for n in nomes if n not in usados]
+    if ruins:
+        raise AssertionError("definido e nunca usado: " + ", ".join(ruins))
+    return None
+
+
+def _imports_cobrem_o_uso():
+    ruins = []
+    for caminho in arquivos:
+        arvore = ast.parse(fonte(caminho))
+        com_estrela, explicitos = set(), set()
+        for no in ast.walk(arvore):
+            if isinstance(no, ast.ImportFrom):
+                for apelido in no.names:
+                    if apelido.name == "*":
+                        com_estrela.add(no.module)
+                    else:
+                        explicitos.add(apelido.name)
+        usados = {n.id for n in ast.walk(arvore) if isinstance(n, ast.Name)}
+        for pacote, nomes in API_DOS_PACOTES.items():
+            if pacote in com_estrela:
+                continue
+            for nome in sorted((nomes & usados) - explicitos):
+                ruins.append(f"{os.path.basename(caminho)}: {nome} sem import de {pacote}")
+    if ruins:
+        raise AssertionError("; ".join(ruins))
+    return None
+
+
+def _ponto_de_entrada():
+    # Script sem a chamada final roda, não imprime erro e não faz nada.
+    ruins = []
+    for caminho in arquivos:
+        texto = fonte(caminho)
+        nome = os.path.basename(caminho)
+        if '__name__ == "__main__"' not in texto:
+            ruins.append(f"{nome}: sem bloco __main__")
+        for no in ast.parse(texto).body:
+            if isinstance(no, ast.FunctionDef) and no.name == "main":
+                if all(isinstance(c, ast.Pass) for c in no.body):
+                    ruins.append(f"{nome}: main() vazio")
+    if ruins:
+        raise AssertionError("; ".join(ruins))
+    return None
+
+
+def _textos_do_lcd():
+    # Foi assim que "Movimento na garagem" virou "Movimento na g", escondendo
+    # justamente onde olhar. Marcador {} conta como 4 caracteres (ID do cartão).
+    arvore = ast.parse(fonte(os.path.join(SRC, "broker_central.py")))
+
+    def texto(no):
+        if isinstance(no, ast.Constant) and isinstance(no.value, str):
+            return no.value
+        if (
+            isinstance(no, ast.Call)
+            and isinstance(no.func, ast.Attribute)
+            and no.func.attr == "format"
+            and isinstance(no.func.value, ast.Constant)
+        ):
+            return no.func.value.value.replace("{}", "0000")
+        return None
+
+    achados = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Call) and isinstance(no.func, ast.Name):
+            if no.func.id in ("mostrar", "mostrar_aviso_rfid"):
+                achados += no.args[:2]
+        if isinstance(no, ast.Assign) and any(isinstance(a, ast.Name) and a.id == "onde" for a in no.targets):
+            achados.append(no.value)
+        if isinstance(no, ast.FunctionDef) and no.name == "situacao_da_casa":
+            for r_ in ast.walk(no):
+                if isinstance(r_, ast.Return) and isinstance(r_.value, ast.Tuple):
+                    achados += r_.value.elts[:2]
+    textos = [t for t in map(texto, achados) if t is not None]
+    longos = [t for t in textos if len(t) > LIMITE_LCD]
+    if longos:
+        raise AssertionError(f"mais de {LIMITE_LCD} caracteres: " + "; ".join(longos))
+    return f"{len(textos)} textos conferidos"
+
+
 teste("customRead() sempre com .strip()", _customread_strip)
 teste("MCU não usa as portas A0–A3", _mcu_sem_analogicas)
+teste("MCU só usa D0–D5", _mcu_so_d0_d5)
+teste("cada atuador usa a API certa, sem pino literal", _api_do_dispositivo)
+teste("ao_receber tem 1 argumento e está registrado", _ao_receber)
+teste("nenhuma função ou porta órfã", _nada_orfao)
+teste("todo nome da API do PT tem o import correspondente", _imports_cobrem_o_uso)
+teste("todo script tem ponto de entrada", _ponto_de_entrada)
+teste("textos do LCD cabem em 14 caracteres", _textos_do_lcd)
 
 # --------------------------------------------------------------------------- #
 print("\nOrçamento e coerência de portas")
@@ -302,19 +508,47 @@ def _porta_broker():
     # outra porta fica mudo sem erro nenhum.
     portas = set()
     for caminho in arquivos:
-        portas.update(re.findall(r"BROKER_PORT\s*=\s*(\d+)", fonte(caminho)))
+        portas.update(re.findall(r"(?:BROKER_PORT|PORTA_BROKER)\s*=\s*(\d+)", fonte(caminho)))
     if portas and portas != {"1883"}:
         raise AssertionError(f"portas de broker divergentes: {sorted(portas)}")
     return "1883 em todos os scripts" if portas else None
 
 
+def _ip_do_broker():
+    # IP errado também não dá erro: a zona segue automatizando, só que muda.
+    ruins = []
+    for caminho in arquivos:
+        for ip in re.findall(r'BROKER_IP\s*=\s*"([^"]+)"', fonte(caminho)):
+            if ip != IP_BROKER:
+                ruins.append(f"{os.path.basename(caminho)}: {ip}")
+    if ruins:
+        raise AssertionError(f"o broker é {IP_BROKER}: " + "; ".join(ruins))
+    return None
+
+
+def _zona_bate_com_o_arquivo():
+    # O nome da zona vira tópico: "Jardim" e "jardim" são tópicos diferentes.
+    ruins = []
+    for caminho in nos_da_automacao():
+        nome = os.path.basename(caminho)
+        m = re.search(r'^ZONA\s*=\s*"([^"]+)"', fonte(caminho), re.M)
+        if not m:
+            continue
+        esperado = "perimetro" if nome.startswith("thing_rfid") else nome[5:-3]
+        if m.group(1) != esperado:
+            ruins.append(f"{nome}: ZONA={m.group(1)!r}, esperado {esperado!r}")
+    if ruins:
+        raise AssertionError("; ".join(ruins))
+    return None
+
+
 teste("tópicos seguem casa/<zona>/<grandeza>", _topicos)
 teste("todos apontam para a mesma porta de broker", _porta_broker)
+teste("todos apontam para o IP do broker", _ip_do_broker)
+teste("ZONA bate com o nome do arquivo", _zona_bate_com_o_arquivo)
 
-def _pontas_soltas():
-    # O broker e as zonas conversam por tópico, e tópico errado não dá erro:
-    # a mensagem simplesmente não chega. Duas pontas soltas são defeito de
-    # verdade, e as duas só aparecem lendo os dois lados juntos.
+def _topicos_das_zonas():
+    """Devolve (publicados, aceitos), lidos do código de cada nó."""
     publicados, aceitos = set(), set()
     for caminho in arquivos:
         texto = fonte(caminho)
@@ -327,10 +561,21 @@ def _pontas_soltas():
         corpo = texto.split("def ao_receber", 1)[-1].split("\ndef ", 1)[0]
         for atuador in re.findall(r'endswith\(\s*["\']/cmd/([a-z_]+)["\']', corpo):
             aceitos.add("casa/{}/cmd/{}".format(zona, atuador))
+    return publicados, aceitos
+
+
+def _pontas_soltas():
+    # O broker e as zonas conversam por tópico, e tópico errado não dá erro:
+    # a mensagem simplesmente não chega. Duas pontas soltas são defeito de
+    # verdade, e as duas só aparecem lendo os dois lados juntos.
+    publicados, aceitos = _topicos_das_zonas()
 
     broker = fonte(os.path.join(SRC, "broker_central.py"))
     lidos = set(re.findall(r'estado\.get\(\s*["\'](casa/[^"\']+)["\']', broker))
-    enviados = set(re.findall(r'enviar_comando\([^,]+,\s*["\'](casa/[^"\']+)["\']', broker))
+    # O RFID não passa por estado.get(): é comparado direto em ao_receber().
+    lidos |= set(re.findall(r'topico\s*==\s*["\'](casa/[^"\']+)["\']', broker))
+    # Qualquer literal de comando, para pegar também o que passa por variável.
+    enviados = set(re.findall(r'["\'](casa/[a-z0-9_]+/cmd/[a-z0-9_]+)["\']', broker))
 
     problemas = []
     orfaos = sorted(lidos - publicados)
@@ -342,12 +587,39 @@ def _pontas_soltas():
     if problemas:
         raise AssertionError(" | ".join(problemas))
     sobrando = len(publicados - lidos)
-    return "{} tópicos publicados, {} lidos pelo broker, {} só para o dashboard".format(
+    return "{} tópicos publicados, {} lidos pelo broker, {} só para o painel".format(
         len(publicados), len(lidos & publicados), sobrando
     )
 
 
+def _arquitetura_bate():
+    # A tabela de tópicos de docs/ARQUITETURA.md é o contrato do protocolo, e já
+    # divergiu do código sem ninguém notar.
+    publicados, aceitos = _topicos_das_zonas()
+    documentados, comandos = set(), set()
+    with open(os.path.join(RAIZ, "docs", "ARQUITETURA.md"), encoding="utf-8") as f:
+        linhas = f.read().splitlines()
+    nomes = {
+        "Perímetro": "perimetro", "Sala": "sala", "Cozinha": "cozinha",
+        "Quarto": "quarto", "Jardim": "jardim", "Garagem": "garagem",
+    }
+    for linha in linhas:
+        m = re.match(r"- (\w+): (.*) · cmd: (.*)$", linha)
+        if not (m and m.group(1) in nomes):
+            continue
+        zona = nomes[m.group(1)]
+        documentados |= {f"casa/{zona}/{g}" for g in re.findall(r"`(\w+)`", m.group(2))}
+        comandos |= {f"casa/{zona}/cmd/{c}" for c in re.findall(r"`(\w+)`", m.group(3))}
+    # cmd/modo é broadcast (casa/todas/...), e a tabela lista só os direcionados.
+    aceitos = {c for c in aceitos if not c.endswith("/cmd/modo")}
+    diferencas = sorted((documentados ^ publicados) | (comandos ^ aceitos))
+    if diferencas:
+        raise AssertionError("divergem entre código e ARQUITETURA.md: " + ", ".join(diferencas))
+    return f"{len(documentados)} tópicos e {len(comandos)} comandos"
+
+
 teste("broker e zonas falam os mesmos tópicos", _pontas_soltas)
+teste("a tabela de tópicos da ARQUITETURA bate com o código", _arquitetura_bate)
 
 
 # --------------------------------------------------------------------------- #
@@ -360,8 +632,6 @@ def _v3_intacto():
         return "V3 não está neste computador, pulado"
     if not os.path.isdir(os.path.join(v3, ".git")):
         return "V3 sem git, não dá para conferir"
-    import subprocess
-
     p = subprocess.run(
         ["git", "status", "--short"], cwd=v3, capture_output=True, text=True
     )
@@ -379,6 +649,25 @@ def _v3_intacto():
 
 
 teste("o projeto V3 continua sem edições", _v3_intacto)
+
+# --------------------------------------------------------------------------- #
+print("\nComportamento (com dublês do Packet Tracer)")
+
+
+def _logica():
+    # Dublê prova a lógica do script, não o comportamento do simulador.
+    p = subprocess.run(
+        [sys.executable, os.path.join(RAIZ, "verificacao", "testes_logica.py")],
+        capture_output=True,
+        text=True,
+    )
+    ruins = [x.strip() for x in p.stdout.splitlines() if x.startswith("  FALHA")]
+    if p.returncode != 0:
+        raise AssertionError("; ".join(ruins) or p.stderr.strip()[-300:])
+    return f"{p.stdout.count('  ok ')} testes"
+
+
+teste("os defeitos da revisão de 03/11 não voltaram", _logica)
 
 # --------------------------------------------------------------------------- #
 print()

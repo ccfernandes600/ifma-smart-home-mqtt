@@ -21,6 +21,10 @@
 # simulado. Numa bancada de duas horas o valor mal sai do lugar, e daria
 # para concluir errado que a leitura nao funciona. O setContribution faz
 # o ambiente subir num ritmo que da para ver.
+#
+# A injecao segue o que o script embutido do Heating Element faz: taxa em
+# unidades POR SEGUNDO e chamada repetida a cada segundo, com o quarto
+# argumento True. NAO CONFIRMADO para fumaca: e o que a bancada vai medir.
 # =====================================================================
 
 from environment import *
@@ -32,9 +36,10 @@ CANDIDATOS = ["Smoke", "Smoke Detector", "smoke", "SMOKE", "Fire", "Fire Smoke"]
 CONTROLE = "CO"  # ja confirmado: serve para provar que o pacote responde
 
 INJETAR = True  # False = so le, nao mexe no ambiente
-TAXA = 30.0  # unidades por hora simulada injetadas no ID que funcionar
-LIMITE = 80.0  # teto da injecao, em %
-INTERVALO = 3  # segundos entre leituras
+TAXA = 0.25  # unidades POR SEGUNDO: cruza os 20% em cerca de 80 s
+LIMITE_API = 1.0e6  # 3o argumento, com o mesmo valor do Heating Element
+TETO = 40.0  # % em que este script para de injetar
+INTERVALO = 1  # segundos entre ciclos (a contribuicao e renovada em cada um)
 
 
 def ler(nome):
@@ -76,47 +81,27 @@ def descobrir_id():
     return encontrado
 
 
-def injetar(nome):
-    """Faz o ambiente subir rapido o bastante para o teste andar.
-
-    A assinatura do setContribution varia entre versoes do PT, entao
-    tentamos as formas conhecidas e ficamos com a que nao levantar erro."""
-    tentativas = (
-        (
-            "setContribution(id, taxa, limite)",
-            lambda: Environment.setContribution(nome, TAXA, LIMITE),
-        ),
-        (
-            "setContribution(id, taxa, limite, True)",
-            lambda: Environment.setContribution(nome, TAXA, LIMITE, True),
-        ),
-        ("setContribution(id, taxa)", lambda: Environment.setContribution(nome, TAXA)),
-    )
-    for rotulo, chamada in tentativas:
-        try:
-            chamada()
-            print(
-                "Injecao ativa via {} -- taxa {}/h, limite {}".format(
-                    rotulo, TAXA, LIMITE
-                )
-            )
-            return True
-        except Exception as erro:
-            print("  {} nao serviu: {}".format(rotulo, erro))
-    print(
-        "Nenhuma forma de setContribution funcionou: o valor vai subir no ritmo natural."
-    )
-    return False
+def injetar(nome, taxa):
+    """Renova a contribuicao no ambiente. Devolve False se a chamada falhar."""
+    try:
+        Environment.setContribution(nome, taxa, LIMITE_API, True)
+        return True
+    except Exception as erro:
+        print("setContribution falhou: {}".format(erro))
+        return False
 
 
 def acompanhar(nome):
-    """Imprime a leitura a cada ciclo, para ver o valor se mover."""
-    print("=== acompanhando {} (Ctrl+C ou Stop para encerrar) ===".format(nome))
+    """Imprime a leitura a cada ciclo e injeta ate o TETO."""
+    print("=== acompanhando {} (Stop para encerrar) ===".format(nome))
+    injetando = INJETAR
     while True:
         ok, valor = ler(nome)
         _, controle = ler(CONTROLE)
         if ok:
             print("{} = {}   |   {} = {}".format(nome, valor, CONTROLE, controle))
+            if injetando:
+                injetando = injetar(nome, TAXA if valor < TETO else 0.0)
         else:
             print("leitura falhou: {}".format(valor))
         sleep(INTERVALO)
@@ -126,8 +111,6 @@ def main():
     nome = descobrir_id()
     if not nome:
         return  # sem ID nao ha o que acompanhar; a conclusao ja foi impressa
-    if INJETAR:
-        injetar(nome)
     acompanhar(nome)
 
 

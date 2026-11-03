@@ -19,7 +19,7 @@
 #
 # MODO_DEMO: a taxa real do Old Car (~1%/h CO, ~2%/h CO2) e lenta demais
 # para uma demonstracao em aula. Em vez de escrever no Environment do PT
-# (API de escrita ainda nao confirmada), simulamos uma rampa LOCAL --
+# (possivel com setContribution, ver diag_smoke.py), simulamos uma rampa LOCAL --
 # sobe, dispara o alarme, desce (como se o exaustor limpasse o ar).
 # Trocar MODO_DEMO para False usa o Environment.get() real (producao).
 #
@@ -70,12 +70,13 @@ _modo_viagem = False
 # --- Portas (MCU: usar somente D0-D5) ---
 MOV = 0  # D0: Motion Sensor   (digitalRead)
 PORTA = 1  # D1: Garage Door     (customWrite)
-FAN = 2  # D2: Fan / exaustao  (digitalWrite)
+FAN = 2  # D2: Fan / exaustao  (customWrite "0"/"1"/"2")
 ALARME = 3  # D3: Alarm           (digitalWrite)
 # D4, D5 livres para expansao futura
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -86,10 +87,17 @@ def log(msg):
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
     Backport do padrao validado no RFID Reader / zona_sala.py."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0
@@ -195,7 +203,7 @@ def processar_movimento(*args):
         _mov_expira_em = uptime() + DURACAO_MOVIMENTO
         atualizar_alarme()  # em modo viagem, o alarme local soa na hora
         if novo:
-            publicar("movimento", 1)
+            publicar_se_mudou("movimento", 1)
             log("Movimento detectado (mantido por {}s)".format(DURACAO_MOVIMENTO))
 
 
@@ -206,8 +214,18 @@ def verificar_movimento():
     if _mov_expira_em and uptime() >= _mov_expira_em:
         _mov_expira_em = 0
         atualizar_alarme()  # desliga o alarme de movimento (gas continua valendo)
-        publicar("movimento", 0)
+        publicar_se_mudou("movimento", 0)
         log("Movimento encerrado")
+
+
+def reenviar_estado():
+    """Recupera publicacao de movimento perdida com o broker fora do ar.
+    Sem isto, um movimento=0 que falhou deixaria a Central presa em
+    MOVIMENTO ou INTRUSAO. Em regime nao gera trafego: publicar_se_mudou
+    so envia se o valor mudou ou se o envio anterior falhou."""
+    if not cliente.connected():
+        return  # sem broker nao adianta tentar, e o log viraria enxurrada
+    publicar_se_mudou("movimento", 1 if _mov_expira_em else 0)
 
 
 def ao_receber(data):
@@ -252,6 +270,7 @@ def main():
         manter_conexao()  # reconecta se o broker tiver reiniciado
         verificar_gas()  # ambiente nao gera evento -- checar periodicamente
         verificar_movimento()  # encerra o "movimento ativo" apos o prazo
+        reenviar_estado()  # recupera publicacao perdida sem broker
         sleep(2)
 
 

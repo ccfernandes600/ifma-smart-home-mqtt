@@ -61,8 +61,11 @@ _ultima_tela = None  # evita reescrever o LCD e repetir o log sem necessidade
 # --- Controle de acesso por RFID (o Reader publica casa/perimetro/rfid) ---
 CARTOES_VALIDOS = [1005]  # IDs autorizados a abrir a porta do perimetro
 DURACAO_PORTA_RFID = 5  # segundos que a porta fica aberta apos cartao valido
+DURACAO_TELA_RFID = 5  # segundos que o aviso de cartao fica no LCD
+TELAS_URGENTES = ("ALERTA DE GAS", "INTRUSAO!")  # vencem o aviso de cartao
 PERIMETRO_IP = "192.168.1.21"
 _porta_fecha_em = 0  # uptime() em que a porta deve fechar (0 = fechada)
+_tela_rfid_ate = 0  # uptime() em que o aviso de cartao sai do LCD (0 = sem aviso)
 
 
 def log(msg):
@@ -105,10 +108,18 @@ def situacao_da_casa():
         onde = "Na garagem"
     elif estado.get("casa/perimetro/movimento", 0):
         onde = "No portao"
+    # Sala e Quarto so contam com a casa vazia: em casa, movimento la dentro
+    # e gente morando, nao motivo para alerta.
+    elif modo_viagem and estado.get("casa/sala/movimento", 0):
+        onde = "Na sala"
+    elif modo_viagem and estado.get("casa/quarto/movimento", 0):
+        onde = "No quarto"
     else:
         onde = ""
 
-    som = bool(gas or campainha)  # o que merece acordar o Home Speaker
+    # O que merece acordar o Home Speaker. Intrusao e o evento mais grave da
+    # casa: a sirene do perimetro soa la fora, a Central nao pode ficar calada.
+    som = bool(gas or campainha or (onde and modo_viagem))
 
     if gas:
         return "ALERTA DE GAS", "Verifique casa", "ALERTA DE GAS", "#c62828", som
@@ -127,6 +138,8 @@ def avaliar_regras():
     """O 'cerebro' da casa: decisoes que dependem de varias zonas."""
     linha1, linha2, _titulo, _cor, som = situacao_da_casa()
     digitalWrite(SPEAKER, HIGH if som else LOW)
+    if _tela_rfid_ate and linha1 not in TELAS_URGENTES:
+        return  # aviso de cartao ainda no prazo; so alerta grave passa na frente
     if (linha1, linha2) != _ultima_tela:  # so escreve/loga quando muda
         mostrar(linha1, linha2)
 
@@ -223,6 +236,23 @@ def enviar_comando(ip, topico, valor):
     return False
 
 
+def mostrar_aviso_rfid(linha1, linha2):
+    """Aviso de cartao tem prazo proprio: sem isto, ACESSO OK sumiria na
+    proxima publicacao de qualquer zona, e CARTAO NEGADO ficaria na tela
+    ate alguem publicar. verificar_tela_rfid() devolve a tela de estado."""
+    global _tela_rfid_ate
+    _tela_rfid_ate = uptime() + DURACAO_TELA_RFID
+    mostrar(linha1, linha2)
+
+
+def verificar_tela_rfid():
+    """Encerra o aviso de cartao e restaura a tela de estado no LCD."""
+    global _tela_rfid_ate
+    if _tela_rfid_ate and uptime() >= _tela_rfid_ate:
+        _tela_rfid_ate = 0
+        avaliar_regras()
+
+
 def processar_rfid(tag):
     """Controle de acesso: cartao valido abre a porta do perimetro por
     DURACAO_PORTA_RFID segundos (verificar_porta_rfid fecha depois)."""
@@ -236,19 +266,22 @@ def processar_rfid(tag):
     if tag_num in CARTOES_VALIDOS:
         if enviar_comando(PERIMETRO_IP, "casa/perimetro/cmd/porta", 1):
             _porta_fecha_em = uptime() + DURACAO_PORTA_RFID
-            mostrar("ACESSO OK", "Cartao {}".format(tag_num))
+            mostrar_aviso_rfid("ACESSO OK", "Cartao {}".format(tag_num))
     else:
-        mostrar("CARTAO NEGADO", "ID {}".format(tag_num))
+        mostrar_aviso_rfid("CARTAO NEGADO", "ID {}".format(tag_num))
 
 
 def verificar_porta_rfid():
-    """Fecha a porta do perimetro apos o prazo do cartao valido."""
+    """Fecha a porta do perimetro apos o prazo do cartao valido. Se o
+    comando nao for entregue, tenta de novo: desistir aqui deixaria a porta
+    aberta com o log dizendo que fechou."""
     global _porta_fecha_em
     if _porta_fecha_em and uptime() >= _porta_fecha_em:
-        _porta_fecha_em = 0
-        enviar_comando(PERIMETRO_IP, "casa/perimetro/cmd/porta", 0)
-        log("Porta do perimetro fechada automaticamente")
-        avaliar_regras()  # restaura a tela de estado no LCD
+        if enviar_comando(PERIMETRO_IP, "casa/perimetro/cmd/porta", 0):
+            _porta_fecha_em = 0
+            log("Porta do perimetro fechada automaticamente")
+        else:
+            _porta_fecha_em = uptime() + DURACAO_PORTA_RFID
 
 
 def ao_receber(data):
@@ -256,6 +289,10 @@ def ao_receber(data):
     try:
         msg = loads(data)
     except:
+        # Se o TCP juntar duas publicacoes numa leitura, o JSON nao abre. A
+        # zona ja as marcou como enviadas, entao a perda seria definitiva e
+        # invisivel sem esta linha.
+        log("Mensagem descartada (JSON invalido): " + str(data)[:80])
         return
     topico = msg.get("topic", "")
     valor = msg.get("payload", 0)
@@ -336,6 +373,7 @@ def main():
     while True:
         limpar_clientes()  # mantem a contagem do painel honesta
         verificar_porta_rfid()  # fecha a porta do perimetro apos o prazo
+        verificar_tela_rfid()  # devolve o LCD a tela de estado
         sleep(1)
 
 

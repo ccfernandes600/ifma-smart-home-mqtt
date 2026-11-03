@@ -53,6 +53,7 @@ _seguranca_anterior = (None, None)  # (camera, sirene) -- so loga quando muda
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -63,10 +64,17 @@ def log(msg):
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
     Backport do padrao validado no RFID Reader / zona_sala.py."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0

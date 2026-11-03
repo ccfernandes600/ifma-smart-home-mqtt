@@ -27,7 +27,7 @@
 # LIMIARES DE AGUA/LUZ EM RAW -- CALIBRAR com leituras reais no PT.
 #
 # MODO VIAGEM: esta zona ignora o broadcast casa/todas/cmd/modo de
-# proposito. Planta nao viaja: a irrigacao depende da umidade do solo,
+# proposito. Planta nao viaja: a irrigacao depende do nivel de agua,
 # e a luz do jardim acesa ajuda a simular presenca. Decisao registrada
 # em docs/ARQUITETURA.md, junto com a da Cozinha.
 # =====================================================================
@@ -70,6 +70,7 @@ _luz_acesa = False
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -98,10 +99,17 @@ def publicar_se_mudou(grandeza, valor):
 
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (padrao validado)."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s
         _loops_sem_conexao = 0
@@ -118,6 +126,7 @@ def atualizar_agua(nivel):
     """Tres faixas do nivel de agua: seco -> irriga; bom -> nada;
     alagado -> drena. Histereses evitam liga/desliga nos limiares."""
     global _irrigando, _drenando
+    irrigando_antes, drenando_antes = _irrigando, _drenando
 
     if nivel <= NIVEL_SECO:
         _irrigando = True
@@ -129,21 +138,16 @@ def atualizar_agua(nivel):
     elif nivel <= NIVEL_OK:
         _drenando = False
 
-    mudou_irrigacao = anterior.get("_irrigando") != _irrigando
-    mudou_dreno = anterior.get("_drenando") != _drenando
-    anterior["_irrigando"] = _irrigando
-    anterior["_drenando"] = _drenando
-
     digitalWrite(IRRIGACAO, HIGH if _irrigando else LOW)
     digitalWrite(DRENO, HIGH if _drenando else LOW)
 
-    if mudou_irrigacao:
+    if _irrigando != irrigando_antes:
         log(
             "Irrigacao: {} (nivel={})".format(
                 "LIGOU" if _irrigando else "desligou", nivel
             )
         )
-    if mudou_dreno:
+    if _drenando != drenando_antes:
         log("Dreno: {} (nivel={})".format("LIGOU" if _drenando else "desligou", nivel))
 
 

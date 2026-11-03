@@ -65,6 +65,7 @@ LIMIAR_GAS = 20  # % -- mesmo limiar usado na Garagem
 _perigo = False
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -94,10 +95,17 @@ def publicar_se_mudou(grandeza, valor):
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (padrao validado no
     RFID Reader / zona_sala.py)."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0
@@ -116,6 +124,14 @@ def para_percentual(raw):
     return raw * 100.0 / 1023.0
 
 
+def acionar_atuadores(ligar):
+    """Sprinkler, Janela, Fan e Alarm agem sempre juntos."""
+    digitalWrite(SPRINKLER, HIGH if ligar else LOW)
+    customWrite(JANELA, "1" if ligar else "0")
+    customWrite(FAN, "2" if ligar else "0")
+    digitalWrite(ALARME, HIGH if ligar else LOW)
+
+
 def verificar_perigo():
     """Le fumaca/CO do ambiente (nao e GPIO) e aciona todos os
     atuadores juntos se qualquer um cruzar o limiar. Chamado por
@@ -127,10 +143,7 @@ def verificar_perigo():
 
     if perigo != _perigo:
         _perigo = perigo
-        digitalWrite(SPRINKLER, HIGH if perigo else LOW)
-        customWrite(JANELA, "1" if perigo else "0")
-        customWrite(FAN, "2" if perigo else "0")
-        digitalWrite(ALARME, HIGH if perigo else LOW)
+        acionar_atuadores(perigo)
         log(
             "PERIGO: {} (fumaca={} co={})".format(
                 "INCENDIO/GAS DETECTADO" if perigo else "normalizado", fumaca, co
@@ -177,6 +190,9 @@ def setup():
         pinMode(p, IN)
     for p in [SPRINKLER, JANELA, FAN, ALARME]:
         pinMode(p, OUT)
+    # So se escreve na transicao de perigo: sem isto, um alarme que ficou
+    # ligado na execucao anterior nunca seria desligado.
+    acionar_atuadores(False)
     cliente.onReceive(ao_receber)
     cliente.connect(BROKER_IP, BROKER_PORT)
     log("Cozinha conectando ao broker {}".format(BROKER_IP))

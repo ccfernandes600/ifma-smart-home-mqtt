@@ -74,6 +74,7 @@ _modo_viagem = False  # chega da Central pelo broadcast casa/todas/cmd/modo
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -106,10 +107,17 @@ def manter_conexao():
     o objeto cliente seguiu reportando connected() com o servidor fora do
     ar (conexao fantasma) e a zona ficou muda. Regra operacional enquanto
     nao houver heartbeat: recolou a Central, reinicie as zonas."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0
@@ -210,7 +218,7 @@ def processar_movimento(*args):
         novo = _mov_expira_em == 0
         _mov_expira_em = uptime() + DURACAO_MOVIMENTO
         if novo:
-            publicar("movimento", 1)
+            publicar_se_mudou("movimento", 1)
             log("Movimento detectado (mantido por {}s)".format(DURACAO_MOVIMENTO))
 
 
@@ -219,8 +227,18 @@ def verificar_movimento():
     global _mov_expira_em
     if _mov_expira_em and uptime() >= _mov_expira_em:
         _mov_expira_em = 0
-        publicar("movimento", 0)
+        publicar_se_mudou("movimento", 0)
         log("Movimento encerrado")
+
+
+def reenviar_estado():
+    """Recupera publicacao de movimento perdida com o broker fora do ar.
+    Sem isto, um movimento=0 que falhou deixaria a Central presa em
+    MOVIMENTO ou INTRUSAO. Em regime nao gera trafego: publicar_se_mudou
+    so envia se o valor mudou ou se o envio anterior falhou."""
+    if not cliente.connected():
+        return  # sem broker nao adianta tentar, e o log viraria enxurrada
+    publicar_se_mudou("movimento", 1 if _mov_expira_em else 0)
 
 
 def ao_receber(data):
@@ -268,6 +286,7 @@ def main():
         manter_conexao()  # reconecta se o broker tiver reiniciado
         processar_sensores()  # analogico -> polling periodico
         verificar_movimento()  # encerra o "movimento ativo" apos o prazo
+        reenviar_estado()  # recupera publicacao perdida sem broker
         sleep(2)
 
 

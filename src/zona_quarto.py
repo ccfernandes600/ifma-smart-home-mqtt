@@ -69,6 +69,7 @@ _modo_viagem = False  # chega da Central pelo broadcast casa/todas/cmd/modo
 
 cliente = TCPClient()
 _loops_sem_conexao = 0
+_republicar = False  # conexao caiu: reenviar tudo ao voltar
 anterior = {}  # ultimo valor publicado de cada grandeza
 
 
@@ -97,10 +98,17 @@ def publicar_se_mudou(grandeza, valor):
 
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (padrao validado)."""
-    global _loops_sem_conexao
+    global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
+        if _republicar:
+            # A Central pode ter reiniciado sem estado: esquecer o que ja
+            # foi publicado faz cada valor ser enviado de novo, senao ela
+            # ficaria sem dado ate o valor mudar.
+            _republicar = False
+            anterior.clear()
         return
+    _republicar = True
     _loops_sem_conexao += 1
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s
         _loops_sem_conexao = 0
@@ -146,8 +154,17 @@ def atualizar_climatizacao(temp_c):
 
 
 def atualizar_umidificador(umid_pct):
-    """Umidificador com histerese: liga <40%, so desliga ao voltar a 50%."""
+    """Umidificador com histerese: liga <40%, so desliga ao voltar a 50%.
+
+    Em modo viagem fica desligado, como o AC. O corte tem de estar aqui:
+    esta funcao roda a cada ciclo e religaria o que o cmd/modo desligou."""
     global _umidificando
+    if _modo_viagem:
+        if _umidificando:
+            log("Modo viagem: umidificador desligado")
+        _umidificando = False
+        digitalWrite(UMIDIFICADOR, LOW)
+        return
     anterior_estado = _umidificando
     if umid_pct < UMID_MIN:
         _umidificando = True
@@ -202,7 +219,7 @@ def processar_movimento(*args):
         _mov_expira_em = uptime() + DURACAO_MOVIMENTO
         atualizar_luz_presenca(analogRead(LUZ))  # acende na hora se escuro
         if novo:
-            publicar("movimento", 1)
+            publicar_se_mudou("movimento", 1)
             log("Movimento detectado (mantido por {}s)".format(DURACAO_MOVIMENTO))
 
 
@@ -212,8 +229,18 @@ def verificar_movimento():
     if _mov_expira_em and uptime() >= _mov_expira_em:
         _mov_expira_em = 0
         atualizar_luz_presenca(analogRead(LUZ))  # apaga a luz de presenca
-        publicar("movimento", 0)
+        publicar_se_mudou("movimento", 0)
         log("Movimento encerrado")
+
+
+def reenviar_estado():
+    """Recupera publicacao de movimento perdida com o broker fora do ar.
+    Sem isto, um movimento=0 que falhou deixaria a Central presa em
+    MOVIMENTO ou INTRUSAO. Em regime nao gera trafego: publicar_se_mudou
+    so envia se o valor mudou ou se o envio anterior falhou."""
+    if not cliente.connected():
+        return  # sem broker nao adianta tentar, e o log viraria enxurrada
+    publicar_se_mudou("movimento", 1 if _mov_expira_em else 0)
 
 
 def ao_receber(data):
@@ -250,6 +277,9 @@ def setup():
         pinMode(p, IN)
     for p in [AC, UMIDIFICADOR, LED, JANELA]:
         pinMode(p, OUT)
+    # A luz so e escrita na transicao: sem isto, uma sobra da execucao
+    # anterior ficaria acesa, porque _led_aceso nasce False.
+    digitalWrite(LED, LOW)
     cliente.onReceive(ao_receber)
     cliente.connect(BROKER_IP, BROKER_PORT)
     log("Quarto conectando ao broker {}".format(BROKER_IP))
@@ -262,6 +292,7 @@ def main():
         manter_conexao()
         processar_sensores()
         verificar_movimento()
+        reenviar_estado()  # recupera publicacao perdida sem broker
         sleep(2)
 
 
