@@ -58,8 +58,9 @@ Para cada nó: **Stop** → selecionar tudo → colar → **Run**, sempre a Cent
 > **Feche e reabra a aba do editor antes de copiar.** A aba aberta não recarrega quando o arquivo
 > muda no disco, e o sintoma é a correção "não ter funcionado". Custou uma rodada em 23/09.
 
-> **Salve o `.pkt` a cada dois ou três nós.** O PT trava em sessão longa com muitas janelas de
-> Programming. Travou em 23/09, depois de ~2 h.
+> **Salve o `.pkt` a cada dois ou três nós, e feche o PT a cada 45 min.** A memória dele cresce de 64 a
+> 100 MB/min, mesmo sem script rodando, e reabrir o arquivo não a devolve. Travou em 23/09, depois de ~2 h,
+> e em 03/11, com 3,7 GB (medições no `RETOMAR.md`).
 
 **Checkpoint:** a Central imprime as duas linhas abaixo, sem zona no ar:
 

@@ -81,20 +81,22 @@ Trocar o `Default City.xml` resolve a cidade. **Não resolve os cômodos.** Um c
 nasce de outro template (`Default Container.xml`, `Default Building.xml`, `Default Closet.xml`) e
 roda o clima genérico da Cisco, independente do que a cidade estiver fazendo.
 
-> **Diagnóstico em aberto.** Em 23/09/2026, com a cidade em São Luís, o cômodo com o SBC marcou
-> **−1 °C**, valor que a curva seca nunca produz, porque ela não desce de 24,5 °C. Antes disso,
-> passou minutos marcando 12 graus a menos que a cidade. Contêiner com clima de fábrica é **uma** das
-> hipóteses, e não está provada: a umidade batia, e o episódio veio depois de o ar-condicionado
-> funcionar, cuja contribuição passa por cima do limite da curva (item 5 acima). Atualize este aviso
-> quando a bancada fechar a causa.
+> **Diagnóstico de 03/11/2026 (PT 9.0.1.0858).** Com o clima de São Luís importado no contêiner onde os
+> dispositivos estão (`Corporate Office`), o ambiente subiu a cerca de 2,4 °C/min até alcançar a curva e
+> passou a acompanhá-la: 27,9 °C medidos contra 27,9 °C previstos. Sensor e ambiente coincidem dentro
+> da resolução do `raw`, de cerca de 0,8 °C. Depois de 8 ciclos do ar-condicionado, o ambiente voltou
+> para a curva: 30,71 °C contra 30,73 °C. O −1 °C de 23/09 **não se repetiu**, e a causa daquele dia não
+> ficou provada; contêiner com clima de fábrica é a explicação mais provável.
+>
+> **Ainda sem explicação:** ao abrir o `.pkt`, o ambiente caiu de 17,7 °C a 12,9 °C antes de subir para a
+> curva. Espere uns 12 minutos depois de abrir o arquivo antes de confiar na temperatura.
 
-**Como saber, em dois segundos:** a janela `Environments` mostra o campo `NOTES` abaixo do
-`Current Time`. O gerador grava ali a descrição do perfil — `Sao Luis (MA), estacao seca`. Se a
-Location selecionada mostra essa linha, está com o nosso ambiente; se está vazia, está de fábrica.
+**Como saber:** abra `Environments`, escolha a `Location` e clique em **Edit → Advanced**. O campo de notas
+mostra a descrição do perfil, como `Sao Luis (MA), estacao seca`; se estiver vazio, é o clima de fábrica.
+No modo View a nota não aparece, porque o gerador grava `SHOW_NOTES=false`.
 
-**Como corrigir:** trocar o `Location:` para cada contêiner que tenha dispositivo dentro e
-importar o XML ali também. Ou copiar o arquivo por cima dos outros `Default *.xml` da pasta de
-templates, para que contêiner novo já nasça no clima certo.
+**Como corrigir:** trocar o `Location:` para o contêiner que tem os dispositivos, importar o XML ali e
+**salvar o `.pkt`**. O arquivo guarda o clima: conferido ao salvar e reabrir em 03/11/2026, na mesma máquina.
 
 **Por que isso engana:** o script lê o contêiner onde o SBC está. O painel mostra a Location
 selecionada, que pode ser outra. Dá para perder bastante tempo procurando erro

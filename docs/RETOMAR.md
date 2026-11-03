@@ -1,8 +1,8 @@
 # Retomar o V4
 
-## Bancada de 03/11/2026 — Blocos 0 a 2 aprovados
+## Bancada de 03/11/2026 — Blocos 0 a 3 fechados
 
-Build 9.0.1.0858. **Próximo: terminar o Bloco 3 (temperatura).** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
+Build 9.0.1.0858. **Próximo: Bloco 4.** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
 sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do editor: igual ao `src/`.
 
 - **Rede:** 7 nós conectados na Central, com os IPs certos (.21 a .26 e .33); nenhum `Mensagem descartada`
@@ -13,24 +13,37 @@ sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do ed
 - **Temperatura, medição parcial, não é conclusão:** a Sala subiu de 2 °C a 24 °C em 9,3 min, cerca de
   2,37 °C/min, perto da rampa de 2,5 °C/min da H1. Sensor e ambiente coerentes nas 3 primeiras leituras.
 
-**Bloco 3 em andamento — o que já está medido:**
+**Bloco 3 fechado — a causa da temperatura:**
 
-- **O clima desta sessão é o de fábrica, não o de São Luís.** Nenhuma Location mostra o `NOTES` do perfil e
-  os templates instalados estão com data de 06/07 e `NOTES` vazio: a reinstalação do PT desfez a cópia do
-  `Default City.xml`, risco que o `simulacao/README.md` já avisava. A rampa de hoje **não** valida a curva.
-- **A curva de fábrica do Intercity:** 0 °C até 6h, 24 °C às 12h, 0 °C às 18h e 0 °C até o fim do dia. A forma
-  bate com a medição: Sala 2 °C às 6h22 subindo; Corporate Office 9,04 °C às 17h29 e 2,29 °C às 18h50 (−5 °C/h,
-  o limite do XML).
-- **Sem explicação ainda:** a subida passou da curva (15 °C às 9h, com 12 °C previstos; 24 °C às ~10h40, com ~19 °C
-  previstos), e o Intercity também ficou 1,5 a 2,4 °C acima. O Aquecedor estava parado, e não houve log de
-  climatização. Os horários são estimados pelo fator 1:30.
-- **Os dispositivos estão no mesmo contêiner, o `Corporate Office`.** Ele é um só clima para a casa toda:
-  o AC de uma zona afeta as outras.
-- **Isso não fecha o −1 °C de 23/09:** naquele dia a cidade estava em São Luís. H4 continua aberta.
-- **O `.pkt` guarda o ambiente importado.** São Luís foi importado no `Intercity` e no `Corporate Office`, e continuou
-  lá depois de salvar e reabrir (18:03; 655.222 bytes). Falta confirmar em outra máquina.
-- **Medição interrompida:** Sala rodando desde 18:12 para ver a rampa e o AC. Às 18:31 o PT estava sem responder,
-  com a memória indo de 3,7 GB a 8,4 GB e a CPU ocupada. O log dessa medição não foi lido. Causa não apurada.
+| Hipótese | Resultado | Medição |
+|---|---|---|
+| H1, rampa | **Confirmada** | Cerca de 2,4 °C/min até a curva às 19:00, e depois sobre ela: 24,7/24,7 e 27,9/27,9 °C (ambiente/curva) |
+| H2, clima errado | **Confirmada como causa de hoje** | A reinstalação do PT desfez o `Default City.xml`; o `Corporate Office` estava de fábrica até a importação |
+| H3, sensor × ambiente | **Descartada** | Coincidem dentro da resolução do `raw` (~0,8 °C) |
+| H4, resíduo do AC | **Não se repetiu** | 8 ciclos entre 28,5 e 30,3 °C; sem AC voltou à curva: 30,71 contra 30,73 °C |
+
+- O AC ligou às 19:08:42, no horário que a curva previa. Com a curva acima de 30 °C, ele cicla a cada ~37 s.
+- **Ainda em aberto:** o −1 °C de 23/09 não se repetiu, e a causa daquele dia não está provada. Ao abrir o `.pkt`,
+  o ambiente caiu de 17,7 a 12,9 °C (18:50 a 18:52:41), sem AC, antes de subir para a curva. Vale repetir uma vez.
+- **Os dispositivos estão todos no `Corporate Office`:** é um só clima para a casa, e o AC de uma zona afeta as outras.
+- **O `.pkt` guarda o clima importado:** conferido ao salvar e reabrir, na mesma máquina. Falta testar em outra.
+- **O perfil zera os gases no `Intercity`** (O2 e CO2 em 0,00 %), diferente do clima de fábrica. Conferir na
+  Garagem, no Bloco 5, a linha de base do CO2.
+
+**O PT consome cada vez mais memória, sem depender do nosso código:**
+
+| Situação | Crescimento |
+|---|---|
+| PT sem arquivo | estável em ~460 MB |
+| Central + Sala | ~87 MB/min |
+| Só Central | ~64 MB/min |
+| Nenhum script | ~75 MB/min |
+| Relógio do ambiente pausado | ~100 MB/min |
+| Cópia sem o clima de São Luís | ~100 MB/min |
+
+Reabrir o arquivo não devolve a memória: só fechar o PT. Causa não apurada; relógio, clima e scripts não a
+explicam. **Regra de bancada:** sessões de até 45 min e fechar o PT entre elas. O travamento de 18:31 foi com
+3,7 GB, então não há limite garantido.
 
 **Observado e ainda sem correção:**
 
