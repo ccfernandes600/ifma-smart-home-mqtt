@@ -1,5 +1,51 @@
 # Retomar o V4
 
+## Bancada de 03/11/2026 — Blocos 0 a 2 aprovados
+
+Build 9.0.1.0858. **Próximo: terminar o Bloco 3 (temperatura).** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
+sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do editor: igual ao `src/`.
+
+- **Rede:** 7 nós conectados na Central, com os IPs certos (.21 a .26 e .33); nenhum `Mensagem descartada`
+  nessa carga.
+- **Etapa 1 do TESTE_ISOLADO:** os seis passos aprovados, sem zona no ar.
+- **Cartão 1005:** `ACESSO OK` às 17:34:52 e porta fechada às 17:34:59, só com a Central e o Reader
+  envolvidos. Falta conferir a porta e o LCD no Bloco 6.
+- **Temperatura, medição parcial, não é conclusão:** a Sala subiu de 2 °C a 24 °C em 9,3 min, cerca de
+  2,37 °C/min, perto da rampa de 2,5 °C/min da H1. Sensor e ambiente coerentes nas 3 primeiras leituras.
+
+**Bloco 3 em andamento — o que já está medido:**
+
+- **O clima desta sessão é o de fábrica, não o de São Luís.** Nenhuma Location mostra o `NOTES` do perfil e
+  os templates instalados estão com data de 06/07 e `NOTES` vazio: a reinstalação do PT desfez a cópia do
+  `Default City.xml`, risco que o `simulacao/README.md` já avisava. A rampa de hoje **não** valida a curva.
+- **A curva de fábrica do Intercity:** 0 °C até 6h, 24 °C às 12h, 0 °C às 18h e 0 °C até o fim do dia. A forma
+  bate com a medição: Sala 2 °C às 6h22 subindo; Corporate Office 9,04 °C às 17h29 e 2,29 °C às 18h50 (−5 °C/h,
+  o limite do XML).
+- **Sem explicação ainda:** a subida passou da curva (15 °C às 9h, com 12 °C previstos; 24 °C às ~10h40, com ~19 °C
+  previstos), e o Intercity também ficou 1,5 a 2,4 °C acima. O Aquecedor estava parado, e não houve log de
+  climatização. Os horários são estimados pelo fator 1:30.
+- **Os dispositivos estão no mesmo contêiner, o `Corporate Office`.** Ele é um só clima para a casa toda:
+  o AC de uma zona afeta as outras.
+- **Isso não fecha o −1 °C de 23/09:** naquele dia a cidade estava em São Luís. H4 continua aberta.
+- **O `.pkt` guarda o ambiente importado.** São Luís foi importado no `Intercity` e no `Corporate Office`, e continuou
+  lá depois de salvar e reabrir (18:03; 655.222 bytes). Falta confirmar em outra máquina.
+- **Medição interrompida:** Sala rodando desde 18:12 para ver a rampa e o AC. Às 18:31 o PT estava sem responder,
+  com a memória indo de 3,7 GB a 8,4 GB e a CPU ocupada. O log dessa medição não foi lido. Causa não apurada.
+
+**Observado e ainda sem correção:**
+
+- As zonas publicam tudo duas vezes ao conectar, com 2 a 3 s de diferença. No 1º ciclo o `connected()` ainda é
+  falso, e isso marca `_republicar`. Inofensivo.
+- O cartão fica ao lado do Reader: todo Run do Reader abre a porta, porque a tag é lida ao conectar.
+- O recarregamento de 5 s do painel reescreve o campo de URL do PC: é preciso digitar e dar Enter dentro desse
+  intervalo. `/estado` é texto, não link.
+- A janela da Cozinha se chama `SBC_Sala`, fácil de confundir com `SBC Sala`. O programa dentro dela é o certo.
+- O PT reabre cada nó no estado em que estava ao salvar: com só a Central rodando, só ela voltou rodando.
+- O `.pkt` caiu de 999.876 para cerca de 607.000 bytes ao regravar, sem perda: reaberto às 18:03, os 8 scripts
+  continuam iguais ao `src/`.
+- O `simulacao/README.md` diz que o `NOTES` aparece no modo View, mas o gerador grava `SHOW_NOTES=false`:
+  a conferência de "dois segundos" não funciona. O campo só aparece em Edit → Advanced.
+
 ## Onde estamos — 03/11/2026
 
 **Fase sem simulador: concluída.** A [revisão estática](REVISAO_ESTATICA_2026-11-03.md) achou os
