@@ -36,7 +36,7 @@ dublês dos pacotes do PT. **Dublê prova a lógica do script, não o comportame
   medido e o que é hipótese.
 - **T2 — Hipótese nova, H4: efeito residual dos atuadores. Não provada.** O `RETOMAR.md` registra que a
   divergência apareceu **depois** de o AC funcionar em malha fechada. Os dispositivos chamam
-  `setContribution(..., cumulative=True)`, e H1 sozinha não explica −1 °C, pois a rampa só sobe rumo a
+  `setContribution(..., True)` (visto no script do Heating Element; falta ver o do AC), e H1 sozinha não explica −1 °C, pois a rampa só sobe rumo a
   uma curva que não desce de 24,5 °C. A assinatura pode **se confundir com H1**: `C/h` em +5 seria também
   a recuperação depois do AC. O `diag_temperatura.py` não separa as duas.
 - **T3 — "~1,5 °C por minuto real" × "2,5 °C/min" no mesmo README.** A conta dá 2,5. A medição citada
@@ -71,7 +71,7 @@ Defeitos plantados em cópia, mais um uso correto:
 |---|---|
 | **Pegou (13)** | `class`; import inexistente (2); `customRead` sem strip; A0 em MCU; estouro de portas (2); porta repetida; comentário divergente; tópico do broker lido sem publicador (2); comando direto sem tratador; `BROKER_PORT` divergente |
 | **Falso positivo (1)** | `x = customRead(p)` com `x.strip()` na linha seguinte |
-| **Deixou passar (20)** | **MCU em D7**; porta sem comentário; pino literal; **tópico RFID renomeado nos dois lados**; comando por variável; **`BROKER_IP` errado**; **`PORTA_BROKER` diferente**; `ZONA` com maiúscula; `/cmd/` sem remetente; **Fan com `digitalWrite`**; **LCD acima de 14 caracteres (2)**; **sem `onReceive`**; sem `add_event_detect`; **`ao_receber(client, data)`**; **import ausente (2)**; `main()` vazio; sem bloco `__main__` |
+| **Deixou passar (20)** | **MCU em D7**; porta sem comentário; pino literal; **tópico RFID renomeado de um lado só (2 casos)**; comando por variável; **`BROKER_IP` errado**; **`PORTA_BROKER` diferente**; `ZONA` com maiúscula; `/cmd/` sem remetente; **Fan com `digitalWrite`**; **LCD acima de 14 caracteres (2)**; **sem `onReceive`**; sem `add_event_detect`; **`ao_receber(client, data)`**; **import ausente (2)**; `main()` vazio; sem bloco `__main__` |
 
 Em negrito, os testes que proponho acrescentar: são baratos e cobrem gotchas que o projeto já pagou para
 aprender. A `FORCA-TAREFA.md` diz 12 verificações; são 13. O "1.900 linhas" do cabeçalho também envelheceu.
