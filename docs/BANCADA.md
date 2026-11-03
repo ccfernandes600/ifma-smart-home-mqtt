@@ -1,216 +1,189 @@
-# Roteiro de bancada — fechar o V4
+# Roteiro de bancada — validar o V4 no simulador
 
-Sessão única, estimada em **2h30 a 3h**. Cada bloco termina com um checkpoint: se ele não
-passar, pare ali e anote, porque os blocos seguintes dependem dele.
+Refeito em 03/11/2026, depois da [revisão estática](REVISAO_ESTATICA_2026-11-03.md). Cada bloco
+termina com um checkpoint: se não passar, pare ali e registre, porque os blocos seguintes dependem
+dele. Dá para dividir em duas sessões: a primeira até o Bloco 4, a segunda a partir do Bloco 5.
 
-Build do simulador nesta sessão: **Packet Tracer 9.0.1.0858**.
-
-Para validar nó a nó, com tudo o mais desligado, use o
-[TESTE_ISOLADO.md](TESTE_ISOLADO.md) — protocolo em quatro etapas, com duas camadas por zona.
+**Na bancada:** o Claudio opera o Packet Tracer e cola os logs; o Claude Code interpreta e corrige.
+O que interessa registrar é a **mensagem exata** do terminal do nó, no formato da ficha de falha do
+[TESTE_ISOLADO.md](TESTE_ISOLADO.md).
 
 Referência de portas e IPs: [MONTAGEM_PACKET_TRACER.md](MONTAGEM_PACKET_TRACER.md).
-Estado do projeto e decisões: [RETOMAR.md](RETOMAR.md).
 
 ---
 
-## Bloco 0 — Antes de abrir o Packet Tracer · 5 min
+## Bloco 0 — Antes de abrir o Packet Tracer
 
-**O ponto que mais dá retrabalho:** o script que roda no simulador é uma **cópia** colada dentro
-do nó. Editar `src/*.py` no repositório não muda nada lá dentro. Três scripts mudaram em 21/09 e
-precisam ser recolados:
+- [ ] `python3 verificacao/verificar.py` diz **TUDO CERTO**
+- [ ] `git status` limpo, e o ramo é o `main`
 
-| Nó | Arquivo | O que mudou |
+**O código mudou em 03/11, e nada disso rodou no simulador ainda.** O script que roda é uma **cópia**
+colada dentro do nó: editar `src/*.py` não muda nada lá dentro. Por isso, todos os nós são recolados:
+
+| Nó | IP | Arquivo |
 |---|---|---|
-| Central | `src/broker_central.py` | painel web (`HTTPServer` :80, rotas `/` e `/estado`) |
-| Sala | `src/zona_sala.py` | modo viagem corta AC + Fan e pinta o RGB de azul |
-| Quarto | `src/zona_quarto.py` | modo viagem corta AC e umidificador e suspende a luz de presença |
-
-O `zona_jardim.py` só ganhou comentário — recolar é opcional.
-
-- [ ] Abrir os três arquivos num editor, prontos para copiar
-- [ ] `python3 verificacao/verificar.py` → tem que dizer **TUDO CERTO**
+| Central | .100 | `src/broker_central.py` |
+| Perímetro | .21 | `src/zona_perimetro.py` |
+| Sala | .22 | `src/zona_sala.py` |
+| Cozinha | .23 | `src/zona_cozinha.py` |
+| Quarto | .24 | `src/zona_quarto.py` |
+| Jardim | .25 | `src/zona_jardim.py` |
+| Garagem | .26 | `src/zona_garagem.py` |
+| RFID Reader | .33 | `src/thing_rfid_reader.py` (mudou em 23/09; recole por garantia) |
 
 ---
 
-## Bloco 1 — Abrir o arquivo e inventariar · 10 min
+## Bloco 1 — Abrir e inventariar
 
-O arquivo do projeto é o **`src/IFMA-MQTT.pkt`**, aberto pelo Packet Tracer do Windows em:
+O arquivo é o **`src/IFMA-MQTT.pkt`**, de 23/09, aberto pelo Packet Tracer do Windows em:
 
 ```
-\\wsl.localhost\Ubuntu-26.04\home\ccfernandes\projetos\ifma-smart-home-mqtt\src\IFMA-MQTT.pkt
+\\wsl.localhost\Dell\home\ccfernandes\projetos\ifma-smart-home-mqtt\src\IFMA-MQTT.pkt
 ```
 
-Ele é de **04/07/2026**, anterior aos scripts finais: tem a rede base e as zonas validadas em
-julho, mas provavelmente **não tem** Cozinha, Quarto e Jardim. O conteúdo não dá para conferir
-fora do simulador — o PT 9 grava o `.pkt` cifrado, então o inventário abaixo é manual mesmo.
-
-1. Abrir o arquivo pelo caminho acima.
-2. Conferir quais nós existem e anotar:
-
-| Nó | IP | Existe? |
-|---|---|---|
-| Switch + PC0 | .10 | ☐ |
-| Central (SBC) | .100 | ☐ |
-| Perímetro (MCU) | .21 | ☐ |
-| Sala (SBC) | .22 | ☐ |
-| Cozinha (SBC) | .23 | ☐ |
-| Quarto (SBC) | .24 | ☐ |
-| Jardim (SBC) | .25 | ☐ |
-| Garagem (MCU) | .26 | ☐ |
-| RFID Reader | .33 | ☐ |
-
-3. **Salvar uma cópia** antes de mexer: `Arquivo → Salvar como` → `IFMA-MQTT_2026-09-21.pkt`.
-   O `.pkt` é binário e versionado no git: sem cópia, um erro de montagem não tem desfazer.
+1. Conferir o build (a última bancada usou o **9.0.1.0858**).
+2. **Salvar uma cópia antes de mexer:** `Arquivo → Salvar como` → `IFMA-MQTT_antes-de-2026-11.pkt`.
+   O `.pkt` é binário: sem cópia, erro de montagem não tem desfazer.
+3. Conferir se todos os nós da tabela acima existem. Cozinha, Quarto e Jardim foram montados em 21/09,
+   e o arquivo deve tê-los; o conteúdo não dá para conferir fora do simulador.
 
 **Checkpoint:** você sabe exatamente o que falta montar.
 
 ---
 
-## Bloco 2 — Recolar os três scripts · 10 min
+## Bloco 2 — Recolar os scripts
 
-Para cada um dos três nós (Central, Sala, Quarto):
+Para cada nó: **Stop** → selecionar tudo → colar → **Run**, sempre a Central primeiro.
 
-1. Clicar no nó → aba **Programming**.
-2. **Stop** no script em execução (se estiver rodando).
-3. Abrir o arquivo do projeto, **selecionar tudo e substituir** pelo conteúdo novo.
-4. **Run**.
-5. Olhar o terminal do próprio nó.
+> **Feche e reabra a aba do editor antes de copiar.** A aba aberta não recarrega quando o arquivo
+> muda no disco, e o sintoma é a correção "não ter funcionado". Custou uma rodada em 23/09.
 
-**O que a Central deve imprimir no arranque:**
+> **Salve o `.pkt` a cada dois ou três nós.** O PT trava em sessão longa com muitas janelas de
+> Programming. Travou em 23/09, depois de ~2 h.
+
+**Checkpoint:** a Central imprime as duas linhas abaixo, sem zona no ar:
 
 ```
 Broker ouvindo na porta 1883
 Painel web em http://192.168.1.100:80
 ```
 
-**O `HTTPServer` foi validado no build 9.0.1.0858 em 21/09** — o painel abriu no navegador do PC0
-com as tabelas e a faixa de situação. Se mesmo assim a segunda linha não aparecer no seu arranque,
-o problema é local: `from http import *` falhando ou `HTTPServer.start(80)` retornando erro.
-
-**Checkpoint:** a Central sobe com as duas linhas e as zonas já existentes reconectam
-("Zona conectada: 192.168.1.xx").
-
-> ⚠️ **Reiniciar a Central derruba as zonas em silêncio.** Ao dar Run de novo na Central, ela sobe
-> com `estado` e `clientes` vazios — e as zonas não percebem: o `manter_conexao()` delas só
-> reconecta quando `connected()` vira falso, e o objeto cliente pode continuar reportando conexão
-> depois que o servidor sumiu. O sintoma é o painel abrir com **conectados: 0 · publicando: 0** e
-> "Nenhuma publicacao recebida ainda".
->
-> **Regra prática: recolou a Central, reinicie as zonas** (Stop → Run em cada uma). Antes disso,
-> vale esperar uns 10 segundos: às vezes a primeira tentativa de envio derruba o socket morto e a
-> zona reconecta sozinha.
->
-> Para saber em qual caso você está, olhe o terminal de uma zona: publicando sem reclamar é
-> conexão fantasma (precisa de restart); logando "sem conexao com o broker" é porque já percebeu e
-> vai reconectar.
+Depois, faça a **Etapa 1 do TESTE_ISOLADO** (Central sozinha, seis passos). Mudou código nela.
 
 ---
 
-## Bloco 3 — ✅ RESPONDIDO em 21/09 · o que sobra são 5 min
+## Bloco 3 — A temperatura: fechar o diagnóstico
 
-**`Environment.get("Smoke")` funciona.** A prova veio de graça: a Cozinha subiu e registrou
-`AVISO: sem conexao com o broker -- fumaca nao publicado`. No `verificar_perigo()` a leitura da
-fumaça acontece duas linhas antes da tentativa de publicar, então chegar à publicação significa
-que o `get("Smoke")` retornou sem erro. A última incógnita capaz de mudar a arquitetura caiu.
+É onde paramos em 23/09. Há quatro hipóteses, e `src/diag_temperatura.py` loga sensor, ambiente e taxa.
+**Uma variável por vez, e sem o AC por perto na primeira rodada.**
 
-O que ainda vale fazer, e é rápido: **ver o valor se mexer**. Saber que o ID existe não é o mesmo
-que ver a Cozinha reagir — o limiar é de 20%, e a emissão natural do Old Car é de ~3%/hora
-simulada. Rode `src/diag_smoke.py` num SBC avulso, **no mesmo contêiner físico da Cozinha**, e
-deixe a injeção ligada: o valor sobe a 30/h e você vê sprinkler, janela, fan e alarme dispararem
-dentro da sessão.
+**Rodada 1 — sem atuadores.** Um SBC avulso, com um Temperature Sensor em D0, num contêiner sem AC nem
+Fan. Confira o campo `NOTES` em `Environments`: se a Location do SBC mostra a descrição do perfil, ela
+está com o clima de São Luís. Rode 3 minutos e copie a tabela.
 
-1. Arrastar um **SBC-PT avulso**, sem cabo IoT e sem IP — o pacote `environment` não usa rede.
-2. Colocá-lo **no mesmo contêiner físico da Cozinha**, no Physical Workspace. Em outro cômodo ele
-   lê outro ar e mostra zero para sempre.
-3. Programming → New → *Empty — Python* → colar `src/diag_smoke.py` → **Run**.
-4. Acompanhar a leitura subindo e a Cozinha reagir ao cruzar 20%.
-5. Ao terminar, **Stop** e apagar o SBC de diagnóstico.
+**Rodada 2 — na Sala.** Stop na `zona_sala.py`, rode o diagnóstico no mesmo nó e copie 3 minutos.
+Depois, com a temperatura acima de 30 °C, volte à zona, deixe o AC trabalhar até desligar e rode o
+diagnóstico de novo.
 
-> Se preferir não mexer no ambiente simulado, ponha `INJETAR = False` no topo do script: ele só lê.
+| Resultado | Conclusão |
+|---|---|
+| Colunas SENSOR e AMBIENTE divergem | **H3:** o problema é o caminho da leitura |
+| Rodada 1 com `C/h` perto de 0, num valor que a curva não produz | **H2:** contêiner com clima de fábrica |
+| Rodada 1 com `C/h` em +5 até alcançar a curva, e depois acompanhando | **H1:** rampa normal; basta esperar |
+| Rodada 1 correta, e valor abaixo da curva só depois de o AC funcionar | **H4:** efeito residual do AC |
 
-**Se nenhuma funcionar:** a Cozinha perde a leitura ambiental de fumaça e passa a depender só de
-`"CO"`, que já está confirmado. Nesse caso, anote e **não monte a Cozinha ainda** — é decisão de
-projeto, não de bancada.
+A medição de 23/09 pesa a favor de H4: o AC derrubou o ambiente a 3,31 °C/min, acima do limite da
+curva. **Não é conclusão:** é o que esta rodada decide.
 
-**Checkpoint:** você viu a Cozinha disparar por fumaça, e não só o ID responder.
+**Se confirmar H4,** olhe a recuperação: o ambiente volta para a curva depois que o AC desliga? Se não
+voltar, é decisão de projeto, e paramos para discutir antes de seguir.
 
----
-
-## Bloco 4 — Montar as três zonas que faltam · 45 a 60 min
-
-Para cada zona: arrastar o **SBC-PT**, conectar ao switch, configurar IP, ligar os dispositivos
-com **IoT Custom Cable** nas portas exatas e colar o script.
-
-**Cozinha — SBC · 192.168.1.23**
-`D0` Temperature · `D1` Humidity · `D2` Fire Sprinkler · `D3` Window · `D4` Fan · `D5` Alarm
-⚠️ Não ligar Smoke/CO Detector por cabo: são Smart Things, lidos por `environment`.
-
-**Quarto — SBC · 192.168.1.24**
-`D0` Temperature · `D1` Humidity · `D2` Photo · `D3` Motion · `D4` AC · `D5` Humidifier ·
-`D6` Smart LED · `D7` Window
-
-**Jardim — SBC · 192.168.1.25**
-`D0` Water Level · `D1` Wind · `D2` ATM Pressure · `D3` Photo · `D4` Lawn Sprinkler · `D5` Drain ·
-`D6` Light
-
-**Ordem de subida:** Central primeiro, sempre. Depois as zonas, uma de cada vez, conferindo no
-terminal da Central a linha "Zona conectada" antes de ir para a próxima.
-
-**Checkpoint:** a Central registrou seis zonas conectadas.
+**Checkpoint:** a causa está escrita no `RETOMAR.md`, e o aviso "Diagnóstico em aberto" do
+`simulacao/README.md` foi atualizado, porque esse README é para publicar.
 
 ---
 
-## Bloco 5 — O teste que fecha o projeto · 15 min
+## Bloco 4 — Três perguntas que só o simulador responde
 
-1. Abrir o **PC0** → *Desktop* → **Web Browser**.
-2. Ir para `http://192.168.1.100`.
+1. **O TCP junta mensagens?** Com Sala e Jardim publicando, procure no terminal da Central por
+   `Mensagem descartada`. Se aparecer, a falha é real e precisa de delimitador no protocolo. Se não
+   aparecer em alguns minutos com várias zonas no ar, registre: "não observado nesta carga".
+2. **A saída de um pino sobrevive ao Stop?** Na Cozinha, dispare o alarme e dê Stop com ele ligado. O
+   atuador continua ligado? Dê Run: a correção de 03/11 tem de desligá-lo.
+3. **A injeção de fumaça funciona?** Rode o `src/diag_smoke.py`, reescrito em 03/11, num SBC avulso **no
+   mesmo contêiner da Cozinha**. Era para subir cerca de 0,25 %/s. Se não subir, anote os valores: o
+   formato vem do Heating Element, mas nunca foi testado com fumaça.
 
-**O que você deve ver:** faixa verde com "CASA OK", a contagem de zonas conectadas e **seis
-tabelas** — cozinha, garagem, jardim, perímetro, quarto e sala — cada uma com os valores atuais.
-A página se recarrega sozinha a cada 5 segundos.
-
-3. Conferir dois ou três valores contra o que a zona correspondente loga no terminal dela.
-4. Abrir `http://192.168.1.100/estado` e verificar o JSON bruto.
-
-**Se a página não abrir:** confirme IP e máscara do PC0 e se a Central logou a linha do painel no
-arranque. O navegador do PT não distingue "sem rota" de "servidor fora do ar".
-
-**Se abrir com menos de seis tabelas:** a zona ausente não publicou nada ainda — olhe o terminal
-dela antes de mexer no painel. Zona sem conexão continua automatizando e só loga o aviso, então
-silêncio no painel não significa zona parada.
-
-**Checkpoint:** as seis zonas aparecem no painel. É o caminho zona → Central → tela inteiro.
+**Checkpoint:** as três respostas registradas no `RETOMAR.md`.
 
 ---
 
-## Bloco 6 — Modo viagem e cenários · 30 min
+## Bloco 5 — Zona por zona
 
-1. **Modo viagem:** apertar o Push Button da Central (`D0`).
-   - Painel: faixa azul, "Modo: viagem".
-   - Sala: AC e Fan desligam, RGB fica azul.
-   - Quarto: AC e umidificador desligam; movimento não acende mais o Smart LED.
-   - Cozinha e Jardim: **não mudam** — é o comportamento projetado.
-   - Apertar de novo volta ao normal.
+Siga as Etapas 2 e 3 do **TESTE_ISOLADO** na ordem combinada: Perímetro → Sala → Cozinha → Quarto →
+Jardim → Garagem. Perímetro e Sala já passaram parte disso, mas o código mudou: é regressão, e é rápido.
 
-2. **Gás:** ligar o **Old Car** perto da Garagem → Fan, porta e alarme locais + faixa vermelha
-   "ALERTA DE GAS" no painel e no LCD da Central.
+**Confira o tipo real de cada dispositivo na doc dele, no PT.** Ainda são suposições:
 
-3. **Campainha:** Push Button do Perímetro → Home Speaker na Central e "VISITANTE" no painel.
+| Dispositivo | Zona | Suposto | Sintoma se errado |
+|---|---|---|---|
+| Fire Sprinkler | Cozinha | `digitalWrite` | não aciona |
+| Window | Cozinha, Quarto | `customWrite "1"/"0"` | não abre |
+| Humidifier | Quarto | `digitalWrite` | não liga |
+| Smart LED | Quarto | `digitalWrite` | não acende |
+| Lawn Sprinkler, Drain, Light | Jardim | `digitalWrite` | não aciona |
+| Water Level, Wind, ATM Pressure | Jardim | `analogRead` | leitura sempre 0 |
+| `environment` na MCU | Garagem | existe | erro de import no arranque |
 
-4. **RFID:** aproximar o Card (ID 1005) do Reader → Central abre a porta do Perímetro por 5s e
-   registra "ACESSO LIBERADO".
+**Calibre com valores medidos, anotando data e valor no comentário:**
 
-**Checkpoint:** os quatro cenários se refletem no painel, não só nos LEDs.
+- `LIM_ESCURO` e `LIM_CLARO` (Quarto e Jardim): o `raw` do Photo Sensor ao anoitecer.
+- `NIVEL_*` (Jardim): a relação entre cm e `raw`. Os 12 cm e 88 cm dos perfis foram escolhidos pelo
+  limiar, e 150/800 nunca foram medidos.
+- Na Cozinha e na Garagem, observe se o exaustor fica ligando e desligando perto de 20 %. Só nesse caso
+  entra histerese no gás.
+
+**Checkpoint:** cada zona aprovada nas camadas A e B, com a ficha de falha de quem não passou.
 
 ---
 
-## Bloco 7 — Fechar · 15 min
+## Bloco 6 — Os comportamentos novos de 03/11
 
-- [ ] Salvar o `.pkt`
-- [ ] Anotar o que o Bloco 3 devolveu sobre `Smoke`
+| Cenário | O que fazer | Esperado |
+|---|---|---|
+| Intrusão interna | Modo viagem + movimento na **Sala** e depois no **Quarto** | LCD `INTRUSAO!` / `Na sala` ou `No quarto`; Speaker liga; painel vermelho |
+| Em casa | Modo normal + movimento na Sala | **Nada muda:** `CASA OK`, Speaker desligado |
+| Intrusão externa | Modo viagem + movimento na Garagem | `INTRUSAO!` / `Na garagem`; Speaker liga |
+| Cartão válido | Card 1005 | `ACESSO OK` por 5 s, mesmo com zonas publicando; a porta fecha; o LCD volta |
+| Cartão inválido | Outro ID | `CARTAO NEGADO` por 5 s; o LCD volta sozinho |
+| Alerta vence o aviso | Fumaça durante o `ACESSO OK` | `ALERTA DE GAS` aparece na hora |
+| Porta sem Perímetro | Card 1005 e Stop no Perímetro antes de 5 s; depois Run | Log `Comando nao entregue` a cada 5 s; a porta fecha quando o Perímetro volta |
+| Umidificador em viagem | Forçar ar seco no Quarto + modo viagem | Fica desligado; volta ao sair do modo |
+
+> A porta sem Perímetro depende da conexão fantasma: se o Perímetro reconectar sem Stop → Run na
+> Central, registre o que aconteceu.
+
+**Checkpoint:** a tabela inteira conferida no LCD, no painel e no terminal.
+
+---
+
+## Bloco 7 — O teste que fecha o projeto
+
+**Etapa 4 do TESTE_ISOLADO**, com todas as zonas juntas, e `http://192.168.1.100` aberto no PC0.
+
+**O que você deve ver:** `conectados: 7 · publicando: 6`, seis tabelas e, em `/estado`, os valores que
+as zonas logam. Rode o modo viagem pelo botão: quatro zonas reagem, Cozinha e Jardim seguem iguais.
+
+**Checkpoint:** o caminho zona → Central → tela está inteiro, com as seis zonas.
+
+---
+
+## Bloco 8 — Fechar
+
+- [ ] Salvar o `.pkt` em `src/IFMA-MQTT.pkt`
+- [ ] Atualizar o `RETOMAR.md`: o que passou, o que falhou, a causa da temperatura
 - [ ] `python3 verificacao/verificar.py`
-- [ ] Commitar o `.pkt` atualizado
-- [ ] Marcar no README: montagem da topologia e documentação final
+- [ ] Commit com o `.pkt` e push
 
-Se algum bloco falhar, o que interessa registrar é a **mensagem exata** do terminal do nó — é com
-ela que dá para decidir se é erro de montagem, de API ou de código.
+**Depois de tudo validado**, nesta ordem: heartbeat, que também resolve o estado preso de zona que
+some (C4 da revisão), e alarme por e-mail. Detalhes no `RETOMAR.md`.

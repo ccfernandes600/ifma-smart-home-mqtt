@@ -34,7 +34,7 @@ Ou seja: o projeto no Packet Tracer é um **protótipo fiel**, não uma maquete 
 
 ## 3. A inversão RPi ↔ ESP32 (ponto didático)
 
-No Packet Tracer, colocamos as zonas de clima (analógicas) no **SBC** porque a MCU tinha o bug das portas analógicas. **No hardware real, o mapeamento se inverte:**
+No Packet Tracer, colocamos as zonas de clima (analógicas) no **SBC** porque têm mais de 6 dispositivos — acima do limite de 6 portas usáveis da MCU (o bug do PT afeta só as portas A0–A3, que evitamos). **No hardware real, o mapeamento se inverte:**
 
 - O **Raspberry Pi não tem entrada analógica** — precisa de um ADC externo (ex.: MCP3008).
 - O **ESP32 tem ADC nativo + WiFi** — logo as zonas com muitos sensores analógicos ficam **melhores num ESP32** ("MCU") do que num Raspberry ("SBC").

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## O que é este projeto
 
-Projeto **V4** de automação residencial IoT simulada no **Cisco Packet Tracer 9.0.0**, desenvolvido como atividade prática de Redes/IoT no IFMA Campus Monte Castelo. É a evolução do projeto V3 (GPIO direto, 1 SBC, 10 dispositivos) para uma **arquitetura distribuída com MQTT**, múltiplos SBCs por zona e 30+ dispositivos IoT.
+Projeto **V4** de automação residencial IoT simulada no **Cisco Packet Tracer 9** (a última bancada usou o build 9.0.1.0858), desenvolvido como atividade prática de Redes/IoT no IFMA Campus Monte Castelo. É a evolução do projeto V3 (GPIO direto, 1 SBC, 10 dispositivos) para uma **arquitetura distribuída com MQTT**, múltiplos SBCs por zona e 30+ dispositivos IoT.
 
 Não é um projeto de software convencional: o código Python roda como **MicroPython dentro do editor de cada SBC no Packet Tracer**, não no host. Por isso **não há comandos de build, lint ou test** — a "execução" é colar/rodar o script no SBC dentro do simulador e acionar sensores manualmente. Os artefatos centrais são o arquivo `.pkt` (topologia), os scripts Python dos SBCs e a documentação.
 
@@ -18,14 +18,18 @@ python3 verificacao/verificar.py
 ```
 
 Ele confere estaticamente o que o simulador não perdoa: sintaxe, ausência de `class`
-(restrição pedagógica), só pacotes que existem no PT, `customRead()` sempre com
-`.strip()`, MCU sem as portas A0–A3, orçamento de portas por controlador, pino
-repetido, comentário de pino divergente do valor, padrão dos tópicos MQTT, porta
-única de broker e integridade do V3.
+(restrição pedagógica), pacotes e imports do PT, `customRead()` com `.strip()`, portas
+da MCU, orçamento e coerência de portas, API certa de cada atuador, assinatura e registro
+de `ao_receber`, função ou porta órfã, texto do LCD em até 14 caracteres, tópicos, IP e
+porta do broker, a tabela de tópicos da `ARQUITETURA.md` e a integridade do V3.
+
+A última verificação roda `verificacao/testes_logica.py`, que exercita a lógica com os dublês
+de `verificacao/dubles.py`. **Dublê prova a lógica do script, não o comportamento do simulador.**
 
 É o critério de pronto de qualquer alteração — inclusive das feitas por outro agente
 de IA (ver `../FORCA-TAREFA.md`). Ao resolver um gotcha novo do simulador,
-acrescente o teste correspondente: é o que impede o erro de voltar.
+acrescente o teste correspondente: é o que impede o erro de voltar. Teste novo deve ser visto
+falhando contra o defeito antes de contar como proteção.
 
 ## Projeto V3 (referência — não modificar)
 
@@ -44,19 +48,22 @@ acrescente o teste correspondente: é o que impede o erro de voltar.
 - **Smart Things** (interface de rede própria) → controlados por JavaScript/Blockly, **não Python**. Opção secundária.
 - **Objetos ambientais** (Old Car, Solar Panel…) → não conectam ao SBC; servem para criar cenários de teste dos sensores.
 
-## Decisões de arquitetura ainda abertas (verificar no simulador antes de codificar)
+## Decisões de arquitetura
 
-A seção 4 de `LEVANTAMENTO_DISPOSITIVOS_PT9.md` lista a verificação manual pendente. Dois pontos bloqueiam decisões de código:
+A seção 4 de `LEVANTAMENTO_DISPOSITIVOS_PT9.md` lista a verificação manual pendente.
 
 - **`analogWrite()` — RESOLVIDO**: aceita a faixa 0–1023, mas a resolução real é 256 níveis (slots 0–255): 1023↔255, 0↔0 (PWM de 8 bits). Usar 0–1023 no código, como o V3; os presets RGB do V3 continuam válidos.
 - **Orçamento de portas por controlador** (verificado no PT 9.0.0): **SBC-PT** = 10 portas D0–D9 intercambiáveis (cada uma faz digital/analog/custom). **MCU-PT** = 6 portas usáveis D0–D5 (também flexíveis — aceitam analog/digital/custom) + 4 analógicas dedicadas A0–A3. O bug do V3 é **exclusivo das A0–A3** (evitá-las); as D0–D5 fazem `analogRead/Write` normalmente. Portanto o gargalo da MCU é o **nº de portas (6)**, não o analógico. Regra de alocação: zona com **>6 dispositivos → SBC**; zona com **≤6 dispositivos → MCU-elegível** (analógico OK em D0–D5).
-- **Arquitetura MQTT — DECIDIDA (Opção B, evoluindo para C)**: como não há pacote Python `mqtt` nativo, não dá para publicar MQTT do mesmo script que lê GPIO. Solução adotada: pub/sub sobre `tcp`+`json` (nativos). Central = `TCPServer.listen(1883)` (broker); zonas = `TCPClient` publicando JSON `{"topic":"casa/<zona>/<grandeza>","payload":...,"ts":...}`. Evolução planejada (C): habilitar o serviço MQTT Broker real no IoT Server só para a vitrine (mostrar pacotes MQTT reais no modo simulação). Único item de rede ainda em aberto: confirmar no PT se a **MCU-PT suporta o pacote `tcp`** (define se a Garagem-MCU fecha como nó).
+- **Arquitetura MQTT — DECIDIDA (Opção B, evoluindo para C)**: como não há pacote Python `mqtt` nativo, não dá para publicar MQTT do mesmo script que lê GPIO. Solução adotada: pub/sub sobre `tcp`+`json` (nativos). Central = `TCPServer.listen(1883)` (broker); zonas = `TCPClient` publicando JSON `{"topic":"casa/<zona>/<grandeza>","payload":...}`. Evolução planejada (C): habilitar o serviço MQTT Broker real no IoT Server só para a vitrine (mostrar pacotes MQTT reais no modo simulação). A **MCU-PT suporta o pacote `tcp`** (confirmado em 02/07/2026).
 
 ## Estrutura
 
-- `src/` — scripts Python dos SBCs (a criar; um arquivo por SBC/zona)
-- `web/` — portais HTML do dashboard (a criar; V3 usava portal interno no PT + portal externo no Netlify via SBC proxy)
-- `docs/` — levantamento técnico e documentação
+- `src/` — um script por nó (`broker_central.py`, `zona_*.py`, `thing_*.py`), diagnósticos (`diag_*.py`) e o `IFMA-MQTT.pkt`
+- `docs/` — documentação. **Para saber o estado do projeto, comece por `RETOMAR.md`**; o roteiro de bancada é o `BANCADA.md`
+- `simulacao/` — gerador do ambiente climático do PT e os XMLs
+- `verificacao/` — verificador, testes de lógica, dublês e prévia do painel
+
+O painel web é servido pela própria Central (`pagina_painel()` em `broker_central.py`).
 
 ## Restrições pedagógicas (IFMA)
 

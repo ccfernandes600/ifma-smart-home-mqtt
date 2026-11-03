@@ -10,7 +10,7 @@ Passo a passo para montar a topologia do V4 e carregar os scripts. Referências 
 
 1. Rede base (switch + IPs)
 2. Central (broker) — subir primeiro
-3. Garagem (MCU) — **valida o `tcp` na MCU**, nosso único pendente
+3. Garagem (MCU) — `tcp` na MCU já confirmado (02/07/2026)
 4. Sala (SBC) — valida o padrão de zona analógica
 5. Demais zonas
 6. Objetos ambientais e testes
@@ -108,7 +108,7 @@ Para **cada nó**:
 
 ## Passo 4 — Objetos ambientais e testes
 
-- **Garagem:** adicione um **Old Car** perto do sensor de CO/CO₂. Ligá-lo emite CO/CO₂ → os detectores disparam → Fan + Porta + Alarme, e a Central anuncia no Speaker/LCD.
+- **Garagem:** adicione um **Old Car** perto do sensor de CO/CO₂ (os detectores são decorativos e não influenciam nada). Com ele ligado, a leitura via environment passa de 20% → Fan + Porta + Alarme, e a Central anuncia no Speaker/LCD.
 - **Sala/Quarto:** use um **item de aquecimento/resfriamento** ou ajuste manual do sensor para variar Temperatura e ver o AC/Fan/LED reagirem.
 - **Perímetro:** acione o **Push Button** (campainha) e veja a Central tocar o Home Speaker.
 - Acompanhe os `print()` no terminal de cada nó (aba Programming) e o **modo Simulação** para ver os pacotes na rede.
@@ -121,7 +121,7 @@ O painel é servido pela própria Central, sem nó extra.
 
 1. Com a Central rodando, abra o **PC0** → aba *Desktop* → **Web Browser**.
 2. Vá para `http://192.168.1.100` (porta 80, o padrão do navegador do PT).
-3. A página mostra a faixa de situação (CASA OK, VISITANTE, MODO VIAGEM ou ALERTA DE GÁS),
+3. A página mostra a faixa de situação (CASA OK, VISITANTE NA PORTA, MODO VIAGEM, MOVIMENTO, INTRUSAO ou ALERTA DE GAS),
    o modo atual, quantas zonas estão conectadas e uma tabela por zona com o último valor de
    cada grandeza. Ela se recarrega sozinha a cada 5 segundos.
 4. Para conferir valor por valor sem depender do layout, use `http://192.168.1.100/estado`,

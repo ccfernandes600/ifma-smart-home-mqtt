@@ -109,11 +109,12 @@ Para cada zona, três confirmações:
 Casos específicos, quando chegar a vez:
 
 - **Perímetro + Central:** cartão válido (ID 1005) no Reader → Central manda `cmd/porta`, a porta
-  abre, e fecha sozinha depois de 5 s. Cartão diferente → LCD mostra `CARTAO INVALIDO` e a porta
-  não abre.
+  abre, e fecha sozinha depois de 5 s; o LCD mostra `ACESSO OK / Cartao 1005` por 5 s. Cartão diferente → LCD mostra `CARTAO NEGADO / ID <n>` e a porta
+  não abre. Alerta de gás ou intrusão passam na frente do aviso de cartão.
 - **Garagem + Central:** gás acima do limiar → além dos atuadores locais, a Central mostra
   `ALERTA DE GAS` no LCD, liga o Speaker e o painel fica vermelho.
-- **Perímetro + Central, modo viagem:** movimento na Garagem com modo viagem ligado → `INTRUSAO!`.
+- **Perímetro + Central, modo viagem:** movimento na Garagem com modo viagem ligado → LCD `INTRUSAO! / Na garagem`, Speaker ligado e painel `INTRUSAO NA GARAGEM`.
+  Sem modo viagem, o LCD mostra só `MOVIMENTO / Na garagem`.
 
 ---
 

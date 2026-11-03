@@ -1,7 +1,7 @@
 # Revisão estática — 03/11/2026
 
-Tudo o que dá para conferir **sem abrir o Packet Tracer**. É a lista de trabalho da fase seguinte:
-primeiro as correções, depois a bancada. Nada aqui foi corrigido ainda.
+Tudo o que dá para conferir **sem abrir o Packet Tracer**. Registro do que foi achado em 03/11. As
+correções entraram no mesmo dia, e o `RETOMAR.md` diz o que foi feito e o que ficou de fora.
 
 **Como foi feita:** Claude Code coordenou e julgou; Gemini 4 Argon revisou o código sem ver os achados
 do coordenador; Copilot CLI auditou documentação × código sem poder gravar; Gemini 3.8 Flash revisou a
@@ -41,6 +41,9 @@ dublês dos pacotes do PT. **Dublê prova a lógica do script, não o comportame
   a recuperação depois do AC. O `diag_temperatura.py` não separa as duas.
 - **T3 — "~1,5 °C por minuto real" × "2,5 °C/min" no mesmo README.** A conta dá 2,5. A medição citada
   (2,8 → 27,1 °C em 14 min) não decide, porque a rampa pode ter terminado antes do fim do intervalo.
+
+A favor de H4, medido em 23/09 e citado no próprio README: o AC derrubou o ambiente a 3,31 °C/min real,
+acima do limite de 2,5 da curva.
 
 **Protocolo proposto para a bancada:** rodar `diag_temperatura.py` num contêiner **sem atuadores** e
 repetir no da Sala com AC e Fan. Só a segunda discrepando aponta para H4.

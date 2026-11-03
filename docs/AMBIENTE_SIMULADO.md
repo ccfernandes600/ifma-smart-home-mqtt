@@ -4,6 +4,9 @@ Contêiner novo no PT nasce com **temperatura 0 °C e luminosidade 0**. Com isso
 do projeto nunca dispara: climatização da Sala e do Quarto (30 °C), luminária do Jardim e luz de
 presença do Quarto (escuro) ficam todas paradas — e o sistema parece quebrado quando está correto.
 
+> **Fonte única dos números:** o dicionário `PERFIS` de `simulacao/gerar_ambiente.py`. As tabelas
+> abaixo explicam o raciocínio. Se divergirem do gerador, vale o gerador.
+
 Este documento define o ambiente que faz os cenários acontecerem **sozinhos**, com números de
 Paço do Lumiar / São Luís, não com valores inventados. Serve duas vezes: destrava a bancada e vira
 material de aula, porque o aluno vê a automação reagir a um clima que ele reconhece.
@@ -99,8 +102,8 @@ Anda ao contrário da temperatura: máxima de madrugada, mínima no pico do calo
 | 06 | 88 |
 | 09 | 78 |
 | 14 | 62 |
-| 17 | 70 |
-| 20 | 80 |
+| 17 | 68 |
+| 20 | 78 |
 
 O umidificador do Quarto liga **abaixo de 40 %** e só desliga ao voltar a 50 %. Com esta curva ele
 **nunca liga** — e isso é honesto: em São Luís, umidificador é equipamento sem função. Para
@@ -116,14 +119,16 @@ São Luís fica a 2°31' de latitude sul: dia e noite quase iguais o ano inteiro
 
 | Hora | % |
 |---|---|
-| até 05:45 | 0 |
-| 06:15 | 20 |
+| até 05:30 | 0 |
+| 06:00 | 10 |
+| 07:00 | 35 |
 | 08:00 | 60 |
 | 11:00 | 95 |
 | 12:00 | 100 |
 | 14:00 | 95 |
 | 16:00 | 60 |
-| 17:45 | 20 |
+| 17:00 | 35 |
+| 18:00 | 10 |
 | 18:30 em diante | 0 |
 
 **Interno:** aplicar a mesma curva com **teto de 40 a 50 %** — cômodo com janela recebe uma fração

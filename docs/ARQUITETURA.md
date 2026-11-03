@@ -59,14 +59,14 @@ Cada zona roda a **lógica local rápida** (reação imediata aos seus próprios
 
 **Publish (zona → Central), quando um sensor muda:**
 ```json
-{"topic": "casa/garagem/co", "payload": 1, "ts": 12345}
+{"topic": "casa/garagem/co", "payload": 1}
 ```
-- `payload`: digital = 0/1 · analógico = leitura crua 0–1023 · custom = string
-- `ts`: uptime em segundos (`ctime`/uptime do nó)
+- `payload`: digital = 0/1 · temperatura e umidade = unidades reais (°C e %) · gás (CO/CO₂/fumaça) = % · luz, água, vento e pressão = leitura crua 0–1023 quantizada em passos de 10 · custom = string
+- Só `topic` e `payload` trafegam: nenhum nó envia carimbo de tempo.
 
 **Command (Central → zona):**
 ```json
-{"topic": "casa/garagem/cmd/fan", "payload": 1, "ts": 12346}
+{"topic": "casa/garagem/cmd/fan", "payload": 1}
 ```
 
 **Broadcast (Central → todas as zonas), ex.: mudança de modo:**
@@ -87,12 +87,13 @@ Enviado a cada zona conectada quando o `modo_viagem` muda (botão na Central), e
 
 **Fechado em 20/09/2026.** A zona é **autônoma**: lê os próprios sensores e aciona os próprios atuadores sem pedir licença. A Central só decide o que **atravessa zonas** ou depende de política da casa. Esse é o critério para saber onde uma regra nova deve morar.
 
-**O que a Central decide hoje** — 7 dos 22 tópicos publicados chegam a alguma regra:
+**O que a Central decide hoje** — 10 dos 22 tópicos publicados chegam a alguma regra:
 
 | Tópico | Regra na Central | Por que não é da zona |
 |---|---|---|
 | `casa/garagem/co`, `casa/garagem/co2`, `casa/cozinha/co`, `casa/cozinha/fumaca` | alerta de gás no LCD mestre + Home Speaker | o aviso é para a casa inteira, não para quem está na zona |
-| `casa/garagem/movimento` | **intrusão**, só quando combinado com `modo_viagem` | o modo é estado da casa; a garagem sozinha não sabe se há alguém em casa |
+| `casa/garagem/movimento`, `casa/perimetro/movimento` | **intrusão** ("INTRUSAO!" + "Na garagem"/"No portao") em `modo_viagem`, com Home Speaker; fora dele, só "MOVIMENTO" no LCD | o modo é estado da casa; a zona sozinha não sabe se há alguém em casa |
+| `casa/sala/movimento`, `casa/quarto/movimento` | **intrusão** ("Na sala"/"No quarto") — só contam em `modo_viagem` | em casa, movimento lá dentro é gente morando, não alerta |
 | `casa/perimetro/campainha` | tela "VISITANTE" | idem — o aviso é central |
 | `casa/perimetro/rfid` | whitelist `CARTOES_VALIDOS` → `cmd/porta` | é política de segurança: muda num lugar só, e o leitor continua "burro" |
 
@@ -102,23 +103,27 @@ Enviado a cada zona conectada quando o `modo_viagem` muda (botão na Central), e
 
 **Os `cmd/*` que ninguém aciona são funcionalidade, não código morto.** As zonas tratam **20 comandos de atuador**; a Central envia **um** (`casa/perimetro/cmd/porta`, no fluxo RFID) mais o broadcast `casa/todas/cmd/modo`. Os **19 restantes** são a interface de comando manual — o que o dashboard vai usar para ligar a irrigação, acender o RGB da Sala ou abrir a janela do Quarto. Esperam um remetente humano, não uma regra.
 
-**Desde 21/09/2026 esses 15 tópicos têm consumidor.** Temperatura, umidade, luz, vento, pressão, água e o movimento das zonas que não a Garagem não entram em nenhuma regra da Central — eles alimentam o **painel web** servido por ela. Antes do painel eram tráfego sem destino; agora cada publicação chega a uma tabela que alguém lê. A distinção que ficou: a Central **decide** sobre 7 tópicos e **exibe** os 22.
+**Desde 21/09/2026 esses 12 tópicos têm consumidor.** Temperatura, umidade, luz, vento, pressão e água não entram em nenhuma regra da Central — eles alimentam o **painel web** servido por ela. Antes do painel eram tráfego sem destino; agora cada publicação chega a uma tabela que alguém lê. A distinção que ficou: a Central **decide** sobre 10 tópicos e **exibe** os 22.
 
-> O verificador imprime "6 lidos, 16 só para o dashboard" porque enxerga apenas os `estado.get()` de `avaliar_regras()`. O 7º consumidor é o `casa/perimetro/rfid`, tratado como evento dentro de `ao_receber()`, antes de chegar ao estado.
+**Intrusão aciona o Home Speaker** (gás e campainha também). Avisos de cartão no LCD duram 5 s (`DURACAO_TELA_RFID`), salvo alerta de gás ou intrusão, que passam na frente. Se o comando de fechar a porta não é entregue, a Central tenta de novo a cada 5 s.
+
+> O verificador imprime "22 tópicos publicados, 10 lidos pelo broker, 12 só para o painel". O `casa/perimetro/rfid` está entre os 10: é tratado como evento dentro de `ao_receber()`, mas o verificador o conta como lido.
 
 **A alternativa descartada** era a Central concentrar as regras — mais fiel ao pub/sub. Além de tirar a autonomia das zonas, ela exigiria um mapa zona→IP no broker: o `enviar_comando()` localiza o destino comparando `remoteIP()` com um IP passado à mão, e hoje o único que a Central conhece é o `PERIMETRO_IP`. Quem quiser reabrir a discussão começa por aí.
+
+**Comando manual ainda não tem prioridade sobre a automação (decisão adiada em 03/11/2026).** Na Sala, no Quarto, na Garagem e no Jardim, um `cmd/*` é sobrescrito no ciclo seguinte; na Cozinha, ele persiste até a próxima mudança de perigo. Quando o painel ganhar botões, o padrão a adotar é: o comando vale até a próxima mudança de estado do sensor.
 
 ### Regra: Perímetro — cartão RFID válido abre a Porta
 
 O RFID Reader (nó independente) publica a tag lida em `casa/perimetro/rfid`. A **Central** valida contra a whitelist `CARTOES_VALIDOS` (em `broker_central.py`):
-- **Cartão válido** → Central envia `casa/perimetro/cmd/porta = 1`, mostra "ACESSO LIBERADO" no LCD e **fecha a porta automaticamente** após `DURACAO_PORTA_RFID` segundos (timer via `uptime()`, mesmo padrão de hold das zonas).
-- **Cartão inválido** → LCD mostra "CARTAO INVALIDO" com o ID (sem abrir nada).
+- **Cartão válido** → Central envia `casa/perimetro/cmd/porta = 1`, mostra "ACESSO OK" / "Cartao <id>" no LCD e **fecha a porta automaticamente** após `DURACAO_PORTA_RFID` segundos (timer via `uptime()`, mesmo padrão de hold das zonas).
+- **Cartão inválido** → LCD mostra "CARTAO NEGADO" / "ID <n>" (sem abrir nada).
 
 A validação fica na Central (não no Reader) de propósito: a whitelist é política de segurança da casa — centralizá-la permite mudar cartões autorizados num lugar só, e o Reader continua "burro" (só reporta), como um leitor real.
 
 ### Regra: Garagem — alarme por movimento só em modo viagem
 
-O Alarm da Garagem soa por **duas fontes** combinadas em `atualizar_alarme()`: gás perigoso (sempre) OU movimento detectado **enquanto `modo_viagem` está ativo** (ninguém esperado em casa). Em modo normal, movimento só aparece informativamente no LCD da Central ("MOVIMENTO — Garagem (normal)"), sem soar nenhum alarme — evita disparo falso toda vez que alguém entra na garagem no dia a dia. Ver `carro_ligado()`/`atualizar_alarme()` em `src/zona_garagem.py`.
+O Alarm da Garagem soa por **duas fontes** combinadas em `atualizar_alarme()`: gás perigoso (sempre) OU movimento detectado **enquanto `modo_viagem` está ativo** (ninguém esperado em casa). Em modo normal, movimento só aparece informativamente no LCD da Central ("MOVIMENTO" / "Na garagem"), sem soar nenhum alarme — evita disparo falso toda vez que alguém entra na garagem no dia a dia. Ver `carro_ligado()`/`atualizar_alarme()` em `src/zona_garagem.py`.
 
 ---
 
@@ -133,7 +138,7 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 | D1 | LCD mestre | `customWrite` |
 | D2 | Home Speaker | `digitalWrite` |
 
-### Perímetro — MCU (192.168.1.21) · 4/6 (2 portas livres)
+### Perímetro — MCU (192.168.1.21) · 5/6 (1 porta livre)
 | Porta | Dispositivo | Diretiva |
 |---|---|---|
 | D0 | Motion Sensor | `digitalRead` |
@@ -156,13 +161,13 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 | D2 | Photo Sensor | `analogRead` |
 | D3 | Motion Sensor | `digitalRead` |
 | D4 | AC / Air Cooler | `digitalWrite` |
-| D5 | Fan | `digitalWrite` |
+| D5 | Fan | `customWrite` |
 | D6 | LED R | `analogWrite` |
 | D7 | LED G | `analogWrite` |
 | D8 | LED B | `analogWrite` |
 | D9 | *(livre)* | — |
 
-### Cozinha — SBC (192.168.1.23) · 4/10 (6 portas livres)
+### Cozinha — SBC (192.168.1.23) · 6/10 (4 portas livres)
 | Porta | Dispositivo | Diretiva |
 |---|---|---|
 | D0 | Temperature | `analogRead` |
@@ -173,7 +178,7 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 | D5 | Alarm | `digitalWrite` (confirmado) |
 | D6–D9 | *(livres)* | — |
 
-> ✅ **Aplicada direto a lição da Garagem (03/07/2026):** Smoke Detector e CO Detector **não entram no GPIO** — mesma família de Smart Thing sem `Direct/Local Control`. `zona_cozinha.py` lê os dois via `environment`: `Environment.get("CO")` (confirmado) e `Environment.get("Smoke")` (**inferido** da doc do Old Car, que lista fumaça como um dos tipos de emissão ao lado de CO/CO₂ — ainda não testado empiricamente, confirmar ao montar). Perigo (fumaça OU CO ≥ 20%) aciona Sprinkler + Window + Fan + Alarm juntos, independente de `modo_viagem` (incêndio importa com ou sem gente em casa).
+> ✅ **Aplicada direto a lição da Garagem (03/07/2026):** Smoke Detector e CO Detector **não entram no GPIO** — mesma família de Smart Thing sem `Direct/Local Control`. `zona_cozinha.py` lê os dois via `environment`: `Environment.get("CO")` (confirmado) e `Environment.get("Smoke")` (**confirmado** no PT 9.0.1.0858 em 21/09/2026; a doc do Old Car lista fumaça como um dos tipos de emissão ao lado de CO/CO₂). Perigo (fumaça OU CO ≥ 20%) aciona Sprinkler + Window + Fan + Alarm juntos, independente de `modo_viagem` (incêndio importa com ou sem gente em casa).
 
 ### Quarto — SBC (192.168.1.24) · 8/10
 | Porta | Dispositivo | Diretiva |
@@ -203,7 +208,7 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 |---|---|---|
 | D0 | Motion Sensor | `digitalRead` |
 | D1 | Garage Door | `customWrite` |
-| D2 | Fan | `digitalWrite` |
+| D2 | Fan | `customWrite` |
 | D3 | Alarm | `digitalWrite` |
 | D4, D5 | *(livres)* | — |
 
@@ -211,15 +216,15 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 
 **Cenário-chave da Garagem:** Old Car (objeto ambiental) emite CO/CO₂ (~1%/h e ~2%/h respectivamente, doc oficial Cisco) → `verificar_gas()` lê via `environment` a cada 2s → ao ultrapassar 20% (mesmo limiar do CO Detector oficial), liga Fan (exaustão) + abre Garage Door + soa Alarm, e publica `casa/garagem/co` para a Central.
 
-> ⚠️ **Taxa de emissão lenta:** ~1%/hora de tempo simulado é lento demais para demonstração em aula. Testando alternativas de aceleração (`Environment.setTimeMultiplier`) — ver pendência na seção 8.
+> ⚠️ **Taxa de emissão lenta:** ~1%/hora de tempo simulado é lento demais para demonstração em aula. Para a demonstração, a solução adotada é o `MODO_DEMO` de `zona_garagem.py` (rampa de gás simulada em software) — ver seção 8.
 
 ---
 
 ## 6. Totais
 
 - **7 nós:** 1 Central (SBC) + 4 zonas SBC + 2 zonas MCU (Perímetro, Garagem)
-- **~13 tipos de sensores · ~16 de atuadores · 41 portas físicas usadas** (CO/CO₂ da Garagem e Smoke/CO da Cozinha não ocupam porta — lidos via `environment`; RFID Reader do Perímetro também não — é nó de rede independente com script embutido)
-- Sala é o nó SBC mais carregado (9/10); Cozinha com bastante folga (4/10); Perímetro-MCU e Garagem-MCU com folga (4/6 cada)
+- **~13 tipos de sensores · ~16 de atuadores · 42 portas físicas usadas** (CO/CO₂ da Garagem e Smoke/CO da Cozinha não ocupam porta — lidos via `environment`; RFID Reader do Perímetro também não — é nó de rede independente com script embutido)
+- Sala é o nó SBC mais carregado (9/10); Cozinha com folga (6/10); Garagem-MCU com folga (4/6) e Perímetro-MCU com 1 porta livre (5/6)
 
 ---
 
@@ -259,5 +264,5 @@ implementado.
 - [x] RFID Reader tem API programável? **Sem API GPIO** (`Direct/Local/Remote Control: N/A`), **mas REABILITADO**: o script Python embutido do Thing tem `tcp`/`json` → publica direto no broker (`thing_rfid_reader.py`, testado: tag 1005 lida e publicada). Requisito de montagem: I/O Config → Digital Slots 0→1 (vem de fábrica sem slots).
 - [x] **`Environment.get("Smoke")` — CONFIRMADO no PT 9.0.1.0858 (21/09/2026).** A Cozinha subiu e chegou a publicar `casa/cozinha/fumaca`: no `verificar_perigo()` a leitura acontece duas linhas antes da publicação, então alcançar a publicação prova que o `get("Smoke")` retornou sem erro. Fumaça e CO são lidos pelo pacote `environment`, sem porta física e sem depender dos detectores Smart Thing. Era a última incógnita que podia forçar mudança de arquitetura.
 - [x] **Perímetro (`zona_perimetro.py`) — VALIDADO 100% no PT (02/07/2026)**: conexão, broadcast de modo, campainha (hold 8s), fluxo RFID completo (Card → Reader → broker → whitelist → `cmd/porta` → Door abre/fecha em 5s), Camera ligando em movimento, Siren soando em movimento+modo viagem. Siren e Camera confirmados como `customWrite` `"0"/"1"`.
-- [x] **Modo viagem — FECHADO (21/09/2026): 4 zonas reagem, 2 ignoram por decisão registrada.** Sala corta climatização (AC+Fan) e pinta o RGB de azul; Quarto corta AC e umidificador e suspende a luz de presença; Perímetro e Garagem já tratavam (vigilância). **Cozinha ignora**: risco de incêndio não depende de haver gente em casa. **Jardim ignora**: planta não viaja — a irrigação segue a umidade do solo, e a luz acesa ajuda a simular presença. O modo é decisão por zona, com justificativa, e não um interruptor global.
+- [x] **Modo viagem — FECHADO (21/09/2026): 4 zonas reagem, 2 ignoram por decisão registrada.** Sala corta climatização (AC+Fan) e pinta o RGB de azul; Quarto corta AC e umidificador e suspende a luz de presença; Perímetro e Garagem já tratavam (vigilância). **Cozinha ignora**: risco de incêndio não depende de haver gente em casa. **Jardim ignora**: planta não viaja — a irrigação segue o nível de água, e a luz acesa ajuda a simular presença. O modo é decisão por zona, com justificativa, e não um interruptor global.
 - [x] **Dashboard web — DECIDIDO, IMPLEMENTADO e VALIDADO NO SIMULADOR (21/09/2026, build 9.0.1.0858): servido pela própria Central**, em `HTTPServer` na porta 80. Rotas `/` (painel HTML) e `/estado` (JSON bruto). Razão: a Central é o único nó que já tem o estado completo das 6 zonas, então servir dali dispensa replicar dado e dispensa implementar fan-out de publicações para um nó web — que a Central hoje não faz (ela só transmite o broadcast de modo). Um SBC Web dedicado, como o do V3, exigiria as duas coisas. Ver `pagina_painel()` em `src/broker_central.py`.

@@ -23,6 +23,12 @@
 #       problema nao e o clima: e o caminho da leitura.
 #       ASSINATURA: as colunas SENSOR e AMBIENTE divergem.
 #
+#   H4  EFEITO RESIDUAL DOS ATUADORES. O AC vence o limite da curva (medido
+#       em 23/09: -3,31 C/min real) e a divergencia apareceu depois de ele
+#       funcionar. Hipotese da revisao de 03/11, nao provada.
+#       ATENCAO: a recuperacao depois do AC tambem da C/h em +5, igual a H1.
+#       Para separar: rodar num conteiner SEM atuadores e depois no da Sala.
+#
 # Como usar: cole no MESMO no da zona que esta sob teste (na Sala,
 # D0 = Temperature Sensor), Run, e deixe rodando uns 3 minutos. Se
 # quiser acelerar, ligue o multiplicador de tempo do simulador -- a

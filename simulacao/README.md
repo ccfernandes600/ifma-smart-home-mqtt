@@ -81,11 +81,12 @@ Trocar o `Default City.xml` resolve a cidade. **Não resolve os cômodos.** Um c
 nasce de outro template (`Default Container.xml`, `Default Building.xml`, `Default Closet.xml`) e
 roda o clima genérico da Cisco, independente do que a cidade estiver fazendo.
 
-O sintoma, medido em 23/09/2026: a cidade em São Luís e o cômodo com o SBC marcando **−1 °C** —
-valor que não existe na cidade real e que a curva seca nunca produz, porque ela não desce de
-24,5 °C. Antes de chegar nesse absurdo, o cômodo passou minutos marcando 12 graus a menos que a
-cidade, o que parecia atraso de propagação e não era: eram dois climas diferentes rodando ao mesmo
-tempo, cada um no seu ciclo.
+> **Diagnóstico em aberto.** Em 23/09/2026, com a cidade em São Luís, o cômodo com o SBC marcou
+> **−1 °C**, valor que a curva seca nunca produz, porque ela não desce de 24,5 °C. Antes disso,
+> passou minutos marcando 12 graus a menos que a cidade. Contêiner com clima de fábrica é **uma** das
+> hipóteses, e não está provada: a umidade batia, e o episódio veio depois de o ar-condicionado
+> funcionar, cuja contribuição passa por cima do limite da curva (item 5 acima). Atualize este aviso
+> quando a bancada fechar a causa.
 
 **Como saber, em dois segundos:** a janela `Environments` mostra o campo `NOTES` abaixo do
 `Current Time`. O gerador grava ali a descrição do perfil — `Sao Luis (MA), estacao seca`. Se a
@@ -95,9 +96,8 @@ Location selecionada mostra essa linha, está com o nosso ambiente; se está vaz
 importar o XML ali também. Ou copiar o arquivo por cima dos outros `Default *.xml` da pasta de
 templates, para que contêiner novo já nasça no clima certo.
 
-**Por que isso engana:** a leitura do script está sempre coerente consigo mesma — o `analogRead` e
-o `Environment.get()` concordam, porque os dois leem o mesmo contêiner. Quem discorda é o painel
-que você tem aberto, que pode ser de outra Location. Dá para perder bastante tempo procurando erro
+**Por que isso engana:** o script lê o contêiner onde o SBC está. O painel mostra a Location
+selecionada, que pode ser outra. Dá para perder bastante tempo procurando erro
 no código antes de desconfiar de qual ambiente está sendo lido.
 
 ### Arquivo enxuto, para quem vai deixar como template
@@ -179,10 +179,13 @@ encurta o dia para 24 ou 12 minutos.
 
 ## Trocar São Luís pela sua cidade
 
-Mexa **só no dicionário `PERFIS`** do `gerar_ambiente.py`. Nada mais precisa mudar.
+**Acrescente** sua cidade ao dicionário `PERFIS` do `gerar_ambiente.py`, sem apagar os perfis que
+já existem, e gere com `python3 gerar_ambiente.py --perfil minha-cidade`. Sem `--perfil`, o padrão
+continua sendo `sao-luis-seco`.
 
 ```python
 PERFIS = {
+    # ... perfis existentes ...
     "minha-cidade": {
         "descricao": "Cidade (UF), estação seca",
         "curvas": {
@@ -233,10 +236,10 @@ conferir.
 
 | Grandeza | Limiar no código | O que acontece |
 |---|---|---|
-| Ambient Temperature | ≥ 30 °C liga, ≤ 28 °C desliga | AC + ventilador da Sala e do Quarto |
+| Ambient Temperature | ≥ 30 °C liga, ≤ 28 °C desliga | AC e ventilador da Sala; AC do Quarto |
 | Humidity | < 40 % liga, ≥ 50 % desliga | umidificador do Quarto |
 | Visible Light | ≤ 200 raw acende, ≥ 300 apaga | luminária do Jardim, luz de presença do Quarto |
-| Water Level | < 150 irriga, > 800 drena | irrigação e dreno do Jardim |
+| Water Level | ≤ 150 irriga, ≥ 800 drena | irrigação e dreno do Jardim |
 
 **Um resultado honesto do perfil de São Luís:** o umidificador **nunca liga**, porque a umidade não
 desce de 62 %. Está certo — em São Luís, umidificador é equipamento sem função. O perfil chuvoso,
@@ -279,7 +282,8 @@ ambiente estável, não uma tirada no meio da subida.
 ### Diagnóstico rápido: a umidade bate e a temperatura não
 
 Se, depois de importar, a umidade do painel coincidir com o que a zona publica **e a temperatura
-não**, não procure contêiner errado nem erro de leitura. É o `MAX_RATE`.
+não**, a primeira suspeita é o `MAX_RATE`. Ele não explica valor abaixo da curva: nesse caso, veja
+o aviso de diagnóstico em aberto, mais acima, e rode o `src/diag_temperatura.py`.
 
 A `Ambient Temperature` é a **única** grandeza do catálogo com limite de variação (±5 °C por hora
 simulada). Todas as outras vêm com ±1000, que na prática é ilimitado. Então, no instante do
@@ -298,8 +302,9 @@ Basta esperar: `(alvo − atual) ÷ 2,5` dá os minutos que faltam.
 
 Ao importar, o ambiente não salta para o valor da curva: ele parte de onde estava (0 °C num
 contêiner novo) e **sobe respeitando o `MAX_RATE` de 5 °C por hora simulada**. Numa escala de 1:30
-isso dá ~1,5 °C por minuto real, ou seja, **uns 15 minutos até alcançar uma curva que comece perto
-dos 25 °C**. Medido em 23/09: 2,8 °C às 11h34, 27,1 °C às 11h48.
+isso dá 2,5 °C por minuto real, ou seja, **uns 10 minutos até alcançar uma curva que comece perto
+dos 25 °C**. Medido em 23/09: 2,8 °C às 11h34, 27,1 °C às 11h48, intervalo que não fixa a taxa,
+porque a rampa pode ter alcançado a curva antes do fim.
 
 Não é defeito, e não adianta reimportar achando que falhou. Se precisar do ambiente quente logo no
 começo de uma aula, importe antes e deixe rodando enquanto a turma chega.

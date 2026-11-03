@@ -367,6 +367,8 @@ PERFIS = {
             "Clouds": [(0, 20), (12, 25), (16, 30), (24, 20)],
             "Rain": [(0, 0), (24, 0)],  # estacao seca: nao chove
             "Atmospheric Pressure": [(0, 101.0), (10, 101.3), (16, 100.9), (24, 101.0)],
+            # CALIBRAR na bancada: valor escolhido pelo limiar raw do Jardim,
+            # cuja relacao com cm ainda nao foi medida.
             # Solo seco: abaixo do limiar de irrigacao do Jardim, entao
             # a irrigacao liga sozinha -- e o proprio sprinkler eleva o
             # nivel, fechando a malha.
@@ -430,7 +432,8 @@ PERFIS = {
             ],
             "Wind Speed": [(0, 8), (6, 6), (12, 12), (16, 18), (20, 10), (24, 8)],
             "Clouds": [(0, 70), (9, 75), (14, 90), (18, 85), (24, 70)],
-            # Pancada de fim de tarde, que e o padrao da estacao.
+            # Pancada de fim de tarde, que e o padrao da estacao. CONFERIR com o
+            # INMET: esta curva soma 15,5 cm no dia, forte para um dia tipico.
             "Rain": [
                 (0, 0),
                 (13, 0),
@@ -740,7 +743,9 @@ def main():
         "--perfil", default="sao-luis-seco", help="nome do perfil (ver --listar)"
     )
     parser.add_argument(
-        "--saida", help="arquivo de saida (padrao: ambiente_<perfil>.xml)"
+        "--saida",
+        help="arquivo de saida (padrao: ambiente_<perfil>.xml, ou "
+        "ambiente_<perfil>_enxuto.xml com --tolerancia)",
     )
     parser.add_argument(
         "--escala",
@@ -780,7 +785,9 @@ def main():
 
     saida = args.saida or os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "ambiente_{}.xml".format(args.perfil),
+        # Nome proprio para o enxuto: sem isto, --tolerancia gravaria por
+        # cima do XML completo do perfil.
+        "ambiente_{}{}.xml".format(args.perfil, "_enxuto" if args.tolerancia > 0 else ""),
     )
     xml = gerar_xml(perfil, args.escala, 1, args.tolerancia)
     with open(saida, "w", encoding="utf-8") as arquivo:

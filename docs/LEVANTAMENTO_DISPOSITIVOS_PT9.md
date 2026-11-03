@@ -35,7 +35,7 @@ Estes dispositivos conectam-se diretamente às portas D0–D9 do SBC via cabo Io
 | # | Dispositivo | Tipo de Porta | API de Leitura | O que Detecta |
 |---|-------------|:---:|---|---|
 | 1 | **Motion Sensor** | Digital | `digitalRead()` → HIGH/LOW | Presença/movimento (PIR) |
-| 2 | **Smoke Detector** ⚠️ | ~~Digital~~ **Smart Thing (assumido)** | `Environment.get("Smoke")` — **inferido, não testado**, ver nota abaixo | Fumaça no ambiente |
+| 2 | **Smoke Detector** ⚠️ | ~~Digital~~ **Smart Thing (assumido)** | `Environment.get("Smoke")` — **CONFIRMADO** no PT 9.0.1.0858 (21/09/2026; o ID consta do catálogo exportado pelo próprio PT), ver nota abaixo | Fumaça no ambiente |
 | 3 | **Carbon Dioxide Detector** ⚠️ | ~~Digital~~ **Smart Thing** | ver nota abaixo | Nível de CO₂ |
 | 4 | **Carbon Monoxide Detector** ⚠️ | ~~Digital~~ **Smart Thing** | ver nota abaixo | Nível de CO |
 | 5 | **Push Button** | Digital | `digitalRead()` → HIGH/LOW | Interação manual (pressão) |
@@ -78,7 +78,7 @@ Estes dispositivos conectam-se diretamente às portas D0–D9 do SBC via cabo Io
 >
 > Confirmado empiricamente no PT 9.0.0 (`Environment.get('CO') = 0.0606...`, `getValueWithUnit → "0.06 %"`). O Old Car contribui ~1%/hora de CO e ~2%/hora de CO₂ (doc oficial Cisco) — **é lento**: em um teste curto o valor sobe pouco. Usar o mesmo limiar do dispositivo oficial (**20%**) para disparar o alarme na lógica.
 >
-> **Lição:** nem todo "sensor" do palette de Components é GPIO. Sempre que um `digitalRead`/`analogRead` voltar zero fixo, olhar a doc do próprio dispositivo (aba de ajuda no PT) antes de suspeitar do código — ela costuma dizer explicitamente se é `Direct Control` (GPIO) ou só `Registration Server Compatible` (rede/Smart Thing). O mesmo problema é suspeito no Smoke Detector da Cozinha — a confirmar.
+> **Lição:** nem todo "sensor" do palette de Components é GPIO. Sempre que um `digitalRead`/`analogRead` voltar zero fixo, olhar a doc do próprio dispositivo (aba de ajuda no PT) antes de suspeitar do código — ela costuma dizer explicitamente se é `Direct Control` (GPIO) ou só `Registration Server Compatible` (rede/Smart Thing). O mesmo problema se confirmou no Smoke Detector da Cozinha: ele também é lido via `Environment.get("Smoke")`, confirmado em 21/09/2026.
 
 > ### ⚠️ Gotcha confirmado no PT (02/07/2026): RFID Reader não tem NENHUMA API — nem via rede
 >
@@ -304,7 +304,7 @@ Environment.getGlobalProperty(name) → string                  # não testado
 Environment.setTimeMultiplier(float)           # existe na API C++; não testado (ficou desnecessário)
 ```
 
-**envIDs oficiais confirmados até agora:** `"CO"`, `"CO2"` (testados na Garagem), `"Ambient Temperature"`, `"Humidity"` (confirmados no código embutido do Heating Element).
+**envIDs oficiais confirmados até agora:** `"CO"`, `"CO2"` (testados na Garagem), `"Smoke"` (confirmado na Cozinha em 21/09/2026, PT 9.0.1.0858), `"Ambient Temperature"`, `"Humidity"` (confirmados no código embutido do Heating Element).
 
 **Como os devices ambientais funcionam por dentro (lido do script embutido do Heating Element, 03/07/2026):** o device chama `Environment.setContribution(envID, taxa, limite, True)` a cada segundo, com a **taxa em unidades/segundo** (ex.: `10./3600` = 10 °C/hora) **escalada pelo volume do contêiner**: `taxa × VOLUME_AT_RATE / Environment.getVolume()` (referência `VOLUME_AT_RATE = 100000` cm³ = "escritório típico"). Aquecer um ambiente pequeno é mais rápido que um galpão.
 
@@ -356,7 +356,7 @@ Motivo técnico decisivo: **não há pacote Python `mqtt` nativo** → é imposs
 - [x] Fan é `customWrite` (Custom), não `digitalWrite` — **CONFIRMADO e CORRIGIDO** via doc oficial do device.
 - [x] `Environment.setTimeMultiplier()` — **CONTORNADO**: em vez de acelerar o ambiente real, `zona_garagem.py` usa `MODO_DEMO` (rampa em software, gateada pelo estado real do Old Car). Não foi necessário testar essa chamada.
 - [ ] **HIPÓTESE (promissora, não testada):** um Smart Thing com slot adicionado via `Advanced → I/O Config` pode ser lido por MCU/SBC via cabo IoT, se o script embutido dele escrever o estado no próprio slot? Evidência a favor: o script original da Cisco no RFID Reader fazia `analogWrite(A1, state)` — só faz sentido se o slot for legível do outro lado do cabo. Se confirmada, abre uma 2ª rota (GPIO) para Things além da rota de rede já validada — útil quando não se quer depender do broker. Testar cabeando um Thing numa MCU e lendo com `digitalRead`/`customRead`.
-- [ ] Smoke Detector da Cozinha: **aplicado direto o padrão da Garagem** (`environment`, sem testar GPIO primeiro) em `zona_cozinha.py`. `Environment.get("Smoke")` é **inferido** da doc do Old Car (lista fumaça como emissão, mesma família de CO/CO₂) mas **nunca testado empiricamente** — confirmar o nome exato do envID ao montar (se der erro, tentar variações como `"Smoke Detector"`).
+- [x] Smoke Detector da Cozinha: **aplicado direto o padrão da Garagem** (`environment`, sem testar GPIO primeiro) em `zona_cozinha.py`. `Environment.get("Smoke")` **CONFIRMADO** no PT 9.0.1.0858 em 21/09/2026; o ID consta do catálogo exportado pelo próprio PT.
 - [ ] Metal Detector é Component GPIO de verdade? (não confirmado — mesma dúvida do RFID Reader)
 - [x] Siren e Camera do Perímetro: **CONFIRMADOS (02/07/2026)** — `customWrite` simples ("0"/"1", liga/desliga) funciona nos dois.
 - [ ] Template "MQTT Broker/Client - Python" existe na aba Programming? (relevante para a vitrine C, não bloqueia o backbone B)

@@ -47,7 +47,8 @@ número de dispositivos IoT.
       broker
 - [x] Desenvolvimento dos scripts Python (SBCs + MCU) — 8 scripts em `src/`: broker central, 6
       zonas e o publicador do RFID Reader
-- [ ] Validar no simulador as 3 zonas que nunca rodaram: cozinha, quarto e jardim
+- [ ] Validar no simulador a zona que nunca rodou: o jardim (cozinha e quarto já publicaram no
+      painel em 21/09)
 - [x] **Painel web servido pela própria Central** (`HTTPServer` :80) — rota `/` com tabela por
       zona e `/estado` com JSON bruto; **validado no simulador em 21/09** (build 9.0.1.0858)
 - [x] **Modo viagem fechado:** Sala, Quarto, Perímetro e Garagem reagem; Cozinha e Jardim
@@ -221,13 +222,13 @@ ifma-smart-home-mqtt/
 │   ├── zona_garagem.py                # Zona MCU (template digital) — validado no PT
 │   ├── zona_perimetro.py              # Zona MCU (segurança + RFID) — validado no PT
 │   ├── zona_sala.py                   # Zona SBC (clima) — validado no PT
-│   ├── zona_cozinha.py                # Zona SBC (incêndio/gás) — escrito, a testar
-│   ├── zona_quarto.py                 # Zona SBC (descanso/ar) — escrito, a testar
+│   ├── zona_cozinha.py                # Zona SBC (incêndio/gás) — publicou no painel em 21/09
+│   ├── zona_quarto.py                 # Zona SBC (descanso/ar) — publicou no painel em 21/09
 │   ├── zona_jardim.py                 # Zona SBC (meteo/irrigação) — escrito, a testar
 │   ├── thing_rfid_reader.py           # Script embutido do RFID Reader (nó MQTT) — validado no PT
 │   ├── thing_heating_element_teste.py # Script embutido do Heating Element (instrumento de teste)
 │   ├── IFMA-MQTT.pkt                  # Simulação (abrir no Cisco Packet Tracer)
-│   └── diag_*.py                      # 5 scripts temporários de depuração (ver nota abaixo)
+│   └── diag_*.py                      # 6 scripts temporários de depuração (ver nota abaixo)
 ├── verificacao/
 │   ├── verificar.py                   # Contrato executável: restrições, portas, tópicos
 │   ├── previa_painel.py               # Renderiza o painel da Central fora do simulador
@@ -236,7 +237,7 @@ ifma-smart-home-mqtt/
 ```
 
 > [!NOTE]
-> Os cinco `diag_*.py` (environment, garagem, rfid, smoke, temperatura, time_multiplier) são
+> Os seis `diag_*.py` (environment, garagem, rfid, smoke, temperatura, time_multiplier) são
 > scripts de depuração pontual, escritos pra isolar um problema específico na bancada — não
 > fazem parte da arquitetura final. Cada um documenta, no próprio cabeçalho, o problema que foi
 > investigar.

@@ -1,4 +1,41 @@
-# Retomar o V4 — revisão de 20/09/2026, atualizada em 23/09
+# Retomar o V4
+
+## Onde estamos — 03/11/2026
+
+**Fase sem simulador: concluída.** A [revisão estática](REVISAO_ESTATICA_2026-11-03.md) achou os
+defeitos, e as correções entraram com testes. **Nada disso rodou no Packet Tracer.**
+
+**Próximo passo: a bancada, seguindo o [BANCADA.md](BANCADA.md).** A primeira tarefa de conteúdo é fechar
+o diagnóstico da temperatura, agora com quatro hipóteses (Bloco 3).
+
+**O que mudou no código, e por isso todo nó precisa ser recolado:**
+
+- Movimento na Sala e no Quarto em modo viagem vira intrusão; intrusão aciona o Speaker (decisões de 03/11).
+- Movimento perdido é reenviado em todas as zonas. A afirmação do trecho de 23/09, de que o Perímetro "era a
+  única" zona sem esse cuidado, estava errada.
+- Reconexão volta a publicar o estado. **Não cobre a conexão fantasma:** continua valendo a regra de Stop → Run.
+- Quarto não religa o umidificador em viagem; Cozinha e Quarto nascem com os atuadores em estado conhecido.
+- Aviso de cartão no LCD dura 5 s; o fechamento da porta é repetido se não for entregue; JSON inválido
+  aparece no log.
+- `diag_smoke.py` reescrito: a taxa é por segundo, renovada a cada ciclo. **Não testado.**
+
+**Decidido não fazer agora:**
+
+| Item | Por quê |
+|---|---|
+| Comando manual com prioridade sobre a automação | Só importa quando o painel ganhar botões; o padrão está em `ARQUITETURA.md` §4 |
+| Estado que não expira quando a zona some (C4) | Depende do heartbeat, previsto para depois da validação |
+| Histerese no gás (C12) | Só se a bancada mostrar o exaustor oscilando |
+| Rever a chuva e a água dos perfis (S3, S4) | Chuva com dados do INMET; água com a calibração da bancada |
+| Prazo local para a Porta do Perímetro | Só se a Central fora do ar for cenário de aula |
+
+**O verificador foi medido:** com 34 defeitos plantados, pegava 13 de 33 e reprovava um uso correto. Agora pega
+os 33, sem falso positivo. As regras foram escritas olhando esses defeitos, então não é medida de defeito novo.
+
+---
+
+> **Daqui para baixo é histórico.** Vale como registro do que cada bancada viu; contagens, status e
+> pendências são da data de cada trecho. Se contradisser o que está acima ou o `BANCADA.md`, vale o de cima.
 
 ## Bancada de 23/09 — Central e Perímetro aprovados
 
@@ -57,8 +94,7 @@ e fecha em 5 s).
 
 **Pendências abertas nesta bancada:**
 
-- A intrusão **não aciona o Home Speaker** da Central (só gás e campainha acionam). A sirene do
-  perímetro soa localmente, mas a Central fica calada no evento mais grave. Decisão do professor.
+- ~~A intrusão não aciona o Home Speaker da Central.~~ Decidido e feito em 03/11: aciona.
 - `cmd/sirene` e `cmd/camera` são sobrescritos pelo `atualizar_seguranca()` no evento seguinte.
   Só aparece quando o painel ganhar botões.
 - **A Porta do perímetro não tem prazo local:** quem fecha é a Central, 5 s depois. Central fora do
