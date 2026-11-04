@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## O que é este projeto
 
-Projeto **V4** de automação residencial IoT simulada no **Cisco Packet Tracer 9** (a última bancada usou o build 9.0.1.0858), desenvolvido como atividade prática de Redes/IoT no IFMA Campus Monte Castelo. É a evolução do projeto V3 (GPIO direto, 1 SBC, 10 dispositivos) para uma **arquitetura distribuída com MQTT**, múltiplos SBCs por zona e 30+ dispositivos IoT.
+Projeto **V4** de automação residencial IoT simulada no **Cisco Packet Tracer 9** (a última bancada usou o build 9.0.1.0858), desenvolvido como projeto demonstrativo de Redes/IoT no IFMA Campus Monte Castelo (os alunos fazem atividades menores, pela complexidade; no futuro, pode virar atividade). É a evolução do projeto V3 (GPIO direto, 1 SBC, 10 dispositivos) para uma **arquitetura distribuída com MQTT**, múltiplos SBCs por zona e 30+ dispositivos IoT.
 
 Não é um projeto de software convencional: o código Python roda como **MicroPython dentro do editor de cada SBC no Packet Tracer**, não no host. Por isso **não há comandos de build, lint ou test** — a "execução" é colar/rodar o script no SBC dentro do simulador e acionar sensores manualmente. Os artefatos centrais são o arquivo `.pkt` (topologia), os scripts Python dos SBCs e a documentação.
 
