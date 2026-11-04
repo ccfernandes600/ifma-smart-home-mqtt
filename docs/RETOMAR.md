@@ -84,10 +84,21 @@ Ao abrir o `.pkt`, o ambiente estava de novo em 12,9 °C: a queda inicial é rep
   responde à contribuição. O corte em modo viagem só tem teste de lógica.
 - **Old Car:** não acionei; a Garagem foi testada com CO injetado.
 
+**Bloco 8 — fechamento (22:27):** reaberto do zero, os 8 scripts do `.pkt` estão iguais ao `src/`, e os 7 nós conectaram
+sozinhos, 25 s depois de abrir, sem nenhuma mensagem descartada. **Critério de V4 finalizado: cumprido.**
+
+**Limite do teste:** a Etapa 2 do `TESTE_ISOLADO` (cada zona sozinha, sem a Central) não foi feita zona a zona. As zonas
+foram testadas juntas, e o funcionamento sem a Central só foi visto no arranque.
+
 **Medições novas:**
 
 - O sprinkler soma +3 cm fixos (12 → 15 cm), sem acumular. No perfil seco, a irrigação fica ligada direto.
 - O mostrador do Photo Sensor do Jardim exibe `FILE NOT FOUND`. É só a imagem; a leitura funciona.
+- **Queda ao abrir o arquivo, reproduzida 3 vezes e sem causa:** o ambiente parte certo, 26 °C às 00h do simulador, e cai a
+  ~2,5 °C/min até cerca de 12,9 °C, sem AC, antes de subir até a curva. Leva uns 12 min. O −1 °C de 23/09 pode ser
+  da mesma família, mas não está provado.
+- **Primeira leitura depois de abrir o arquivo:** os sensores analógicos dão 0 no primeiro ciclo (`Temp -100C`, `Umidificador: LIGOU`
+  por 3 s). Não chega à Central, porque ainda não há conexão. Inofensivo, mas aparece no log.
 
 **Observado e ainda sem correção:**
 
