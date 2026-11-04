@@ -1,5 +1,23 @@
 # Retomar o V4
 
+## Retomar aqui — site com a casa ao vivo (04/11/2026)
+
+O V4 está finalizado e testado; o `.pkt` validado é o do git. O site público está em
+https://ifma-smart-home-mqtt.netlify.app, e a função `/api/estado` já recebe dados do simulador.
+
+**Próximos passos, ainda a confirmar com o Claudio** (a recomendação é enviar pela Central, sem SBC Ponte):
+
+1. Na Central: constante de chave vazia por padrão (vazia = não envia e não abre o aviso de permissão), rota com
+   estado, modo, situação e conexões, e envio por `RealHTTPClient` a cada 10 s, só quando o estado mudar. Com teste.
+2. A função precisa aceitar também modo, situação e conexões; hoje só guarda os tópicos numéricos.
+3. No site: seção "Casa ao vivo", com faixa, tabelas por zona e `Simulador desligado` sem dados recentes.
+4. Colar a Central com a chave numa cópia pessoal do `.pkt`, fora do git. O `.pkt` da turma e o do git ficam sem chave.
+5. Testar junto: acionar um sensor no PT e ver o site mudar. Repetir a conferência dos 7 nós.
+
+**A descobrir:** se o aviso `External Network Access` volta a cada abertura do arquivo.
+**Chave:** `~/.cache/pt-operacao/chave_estado.txt` e `ESTADO_CHAVE` no Netlify. Nunca no git.
+
+
 ## Bancada de 03/11/2026 — Blocos 0 a 7 concluídos
 
 Build 9.0.1.0858. **Próximo: Bloco 8 (fechamento).** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
