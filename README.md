@@ -18,7 +18,7 @@ número de dispositivos IoT.
 ![Planta de zonas — Smart Home MQTT · IFMA Campus Monte Castelo](assets/planta_casa_zonas.png)
 
 > [!NOTE]
-> Projeto demonstrativo de Redes de Computadores e IoT — **IFMA Campus
+> Projeto demonstrativo do potencial do Packet Tracer em Redes e IoT — **IFMA Campus
 > Monte Castelo**. O Packet Tracer não tem um pacote `mqtt` nativo acessível por script, então
 > o protocolo real é publish/subscribe sobre `tcp` + `json`, na porta oficial do MQTT (1883).
 
@@ -334,7 +334,7 @@ Licença **MIT**. Consulte o arquivo [LICENSE](LICENSE).
 
 <div align="center">
 
-Projeto demonstrativo de Redes de Computadores e IoT —
+Projeto demonstrativo do potencial do Packet Tracer em Redes e IoT —
 **IFMA Campus Monte Castelo**.
 
 </div>
