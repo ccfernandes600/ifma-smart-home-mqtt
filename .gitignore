@@ -33,3 +33,4 @@ verificacao/previa_painel.html
 
 # Netlify CLI
 .netlify/
+node_modules/

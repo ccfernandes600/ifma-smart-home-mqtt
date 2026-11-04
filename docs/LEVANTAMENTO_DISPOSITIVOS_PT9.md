@@ -282,6 +282,8 @@ ws.send(data)
 ws.onReceive(callback)
 ```
 
+> **CONFIRMADO em 04/11/2026 (PT 9.0.1.0858, no SBC):** `RealHTTPClient` sai para a internet real, por HTTPS, com GET e POST. `onDone` recebe `(status, corpo)`. Na primeira chamada a cada endereço, o PT abre a janela `External Network Access` e pede autorização, com as opções `Yes`, `Yes to All`, `No` e `No to All`.
+
 ### 2.8 JSON
 
 ```

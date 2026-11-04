@@ -1,0 +1,7 @@
+{
+  "name": "ifma-smart-home-site",
+  "private": true,
+  "description": "Dependência da função do site público; os scripts do projeto rodam dentro do Packet Tracer.",
+  "type": "module",
+  "dependencies": { "@netlify/blobs": "8.1.0" }
+}
