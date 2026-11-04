@@ -22,6 +22,8 @@ número de dispositivos IoT.
 > Monte Castelo**. O Packet Tracer não tem um pacote `mqtt` nativo acessível por script, então
 > o protocolo real é publish/subscribe sobre `tcp` + `json`, na porta oficial do MQTT (1883).
 
+**Site do projeto:** [ifma-smart-home-mqtt.netlify.app](https://ifma-smart-home-mqtt.netlify.app)
+
 ## 📑 Sumário
 
 - [📊 Status do Projeto](#-status-do-projeto)
@@ -279,7 +281,7 @@ ifma-smart-home-mqtt/
 │   ├── verificar.py                   # Contrato executável: restrições, portas, tópicos
 │   ├── previa_painel.py               # Renderiza o painel da Central fora do simulador
 │   └── previa_painel.html             # Saída estática da prévia, pra abrir sem rodar nada
-└── web/                                # Vazia: o painel é gerado pela Central, não servido daqui
+└── web/                                # Site público no Netlify; o painel real é gerado pela Central
 ```
 
 > [!NOTE]

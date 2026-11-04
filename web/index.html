@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Home MQTT · IFMA</title>
+<meta name="description" content="Casa inteligente distribuída no Cisco Packet Tracer: seis zonas, uma Central e publish/subscribe sobre TCP e JSON. Projeto do IFMA Campus Monte Castelo, com o que foi medido no simulador.">
+<meta property="og:title" content="Smart Home MQTT · IFMA">
+<meta property="og:description" content="Seis zonas, uma Central e publish/subscribe sobre TCP e JSON no Cisco Packet Tracer, com o que foi medido no simulador.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://ifma-smart-home-mqtt.netlify.app/img/planta.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Schibsted+Grotesk:wght@500;700;800&family=VT323&display=swap">
+<style>
+/* Layout: uma bancada de simulador. A barra azul-marinho vem da interface do Packet Tracer,
+   o LCD verde é o componente real da Central, e cada zona usa a cor da legenda da planta. */
+:root {
+  --bg: #f3f6f8;
+  --surface: #ffffff;
+  --surface-2: #e7edf1;
+  --fg: #13232f;
+  --muted: #4f6270;
+  --line: #cbd6dd;
+  --accent: #0d5f8a;
+  --bar: #0f2a4a;
+  --bar-fg: #e8f0f6;
+  --ok: #0f7a40;
+  --trip: #bb1f1f;
+  --travel: #1565c0;
+  --warn: #8a5a00;
+  --warn-bg: #fdf1d6;
+  --z-per: #9aa8c4;
+  --z-sala: #eebd6b;
+  --z-coz: #ec9c86;
+  --z-qua: #b9a0e6;
+  --z-jar: #93c47d;
+  --z-gar: #a6adb4;
+  --z-cen: #79c2bd;
+  --lcd-bg: #3f9a10;
+  --lcd-fg: #06240a;
+  --lcd-frame: #a50f0f;
+  --display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --lcd: "VT323", "IBM Plex Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1920; --surface: #16242d; --surface-2: #1d2f3a; --fg: #e4edf2; --muted: #9db0bc;
+    --line: #2d434f; --accent: #6cc0ea; --bar: #0a1c33; --bar-fg: #e8f0f6;
+    --ok: #4cc384; --trip: #f07070; --travel: #76b0f2; --warn: #eec26a; --warn-bg: #33290f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1920; --surface: #16242d; --surface-2: #1d2f3a; --fg: #e4edf2; --muted: #9db0bc;
+  --line: #2d434f; --accent: #6cc0ea; --bar: #0a1c33; --bar-fg: #e8f0f6;
+  --ok: #4cc384; --trip: #f07070; --travel: #76b0f2; --warn: #eec26a; --warn-bg: #33290f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 1.0625rem/1.65 var(--body); }
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.12; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); font-weight: 800; letter-spacing: -.015em; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--surface-2); padding: .08em .32em; border-radius: 3px; overflow-wrap: anywhere; }
+
+.wrap { width: 100%; max-width: 76rem; margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+section { padding-block: clamp(3rem, 7vw, 5.5rem); }
+.lede { max-width: 42rem; color: var(--muted); font-size: 1.125rem; }
+.head { display: grid; gap: .8rem; margin-bottom: 2.25rem; }
+
+.bar { background: var(--bar); color: var(--bar-fg); }
+.bar .wrap { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; align-items: center; justify-content: space-between; padding-block: .7rem; }
+.bar b { font: 700 1rem var(--display); }
+.bar nav { display: flex; flex-wrap: wrap; gap: .2rem 1.1rem; font-size: .92rem; }
+.bar a { color: var(--bar-fg); }
+
+/* Abertura */
+.hero { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(2.5rem, 5vw, 4rem); }
+.hero .wrap { display: grid; gap: clamp(2rem, 4vw, 3.5rem); grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; }
+.hero h1 { font-size: clamp(2.3rem, 5.2vw, 4rem); font-weight: 800; letter-spacing: -.025em; }
+.hero-text { display: grid; gap: 1.2rem; min-width: 0; }
+.topic { font: 500 .92rem var(--mono); color: var(--accent); overflow-wrap: anywhere; }
+.facts { display: flex; flex-wrap: wrap; gap: .5rem 1.6rem; list-style: none; margin: .3rem 0 0; padding: 0; font-size: .96rem; color: var(--muted); }
+.facts b { color: var(--fg); font-family: var(--mono); font-weight: 500; }
+figure { margin: 0; min-width: 0; }
+figcaption { color: var(--muted); font-size: .88rem; margin-top: .6rem; }
+.hero img { border-radius: 4px; }
+
+/* Bancada: reprodução dos logs */
+.bench { background: var(--bar); color: var(--bar-fg); }
+.bench .lede { color: #b6c8d6; }
+.bench h2 { color: #fff; }
+.rig { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; }
+.scenes { display: grid; gap: .45rem; grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); }
+.scene { font: 500 .95rem var(--body); color: var(--bar-fg); background: transparent; border: 1px solid #47637d; border-radius: 4px; padding: .6rem .8rem; text-align: left; cursor: pointer; min-height: 44px; }
+.scene:hover { background: #1b3d63; }
+.scene[aria-pressed="true"] { background: var(--bar-fg); color: var(--bar); border-color: var(--bar-fg); font-weight: 600; }
+.scene:focus-visible { outline-color: #fff; }
+
+.lcd-col { display: grid; gap: 1rem; min-width: 0; }
+.lcd { background: var(--lcd-frame); padding: clamp(.8rem, 2vw, 1.15rem); border-radius: 4px; max-width: 30rem; }
+.lcd-inner { background: #0a0a0a; padding: .45rem; }
+.lcd-screen { background: var(--lcd-bg); color: var(--lcd-fg); font: 400 clamp(2rem, 5.2vw, 3rem)/1.02 var(--lcd); padding: .5rem .75rem; min-height: 2.5em; letter-spacing: .05em; white-space: pre; overflow: hidden; }
+.web { background: #f4f6f5; color: #101010; border-radius: 4px; padding: .8rem; max-width: 30rem; }
+.band { color: #fff; padding: .85rem 1rem; border-radius: 4px; transition: background-color .25s; }
+@media (prefers-reduced-motion: reduce) { .band { transition: none; } }
+.band b { display: block; font: 700 1.3rem var(--body); line-height: 1.2; }
+.band span { font-size: .88rem; overflow-wrap: anywhere; }
+.band[data-kind="ok"] { background: #0f7a40; }
+.band[data-kind="viagem"] { background: #1565c0; }
+.band[data-kind="alerta"] { background: #b71c1c; }
+.log { background: #06121d; color: #cfe2ee; border: 1px solid #2c4a63; border-radius: 4px; padding: 1rem; font: 400 .86rem/1.65 var(--mono); min-width: 0; overflow-x: auto; margin: 0; min-height: 15rem; }
+.log-wrap { display: grid; gap: .55rem; min-width: 0; }
+.log-title { font-size: .88rem; color: #b6c8d6; }
+.log .rx { color: #84a8bf; }
+.log .ev { color: #fff; font-weight: 500; }
+.note { color: #b6c8d6; font-size: .92rem; grid-column: 1 / -1; }
+
+/* Zonas */
+.zones { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); border-top: 1px solid var(--line); }
+.zone { display: grid; grid-template-columns: .55rem minmax(0, 1fr); gap: .95rem; padding-block: 1.25rem; padding-right: 1.25rem; border-bottom: 1px solid var(--line); }
+.swatch { background: var(--c); border-radius: 2px; }
+.zone-body { display: grid; gap: .3rem; min-width: 0; }
+.zone-meta { font: 400 .82rem var(--mono); color: var(--muted); }
+.zone p { font-size: .98rem; }
+
+/* Fluxo pub/sub */
+.flow-box { overflow-x: auto; margin-top: 2.25rem; }
+.flow { min-width: 620px; width: 100%; display: block; }
+.flow text { fill: var(--fg); font-family: var(--mono); font-size: 13px; }
+.flow .t { font-family: var(--display); font-weight: 700; font-size: 16px; }
+.flow .m { fill: var(--muted); font-size: 12px; }
+.flow rect.n { fill: var(--surface); stroke: var(--line); }
+.flow path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.flow .tip { fill: var(--muted); }
+
+/* Medições */
+.measure { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; }
+.table-box { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .96rem; }
+th, td { text-align: left; vertical-align: top; padding: .62rem .75rem .62rem 0; border-bottom: 1px solid var(--line); }
+th { font: 600 .78rem var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+td:first-child { font-weight: 600; min-width: 8rem; }
+.num { font-variant-numeric: tabular-nums; }
+.shot { border: 1px solid var(--line); border-radius: 4px; }
+
+/* Armadilhas */
+.alt { background: var(--surface); border-block: 1px solid var(--line); }
+.traps { display: grid; gap: 2rem 2.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); }
+.trap { display: grid; gap: .5rem; align-content: start; min-width: 0; }
+.trap .sym { font: 500 .84rem var(--mono); color: var(--trip); overflow-wrap: anywhere; }
+.trap p { font-size: 1rem; }
+
+/* Limites */
+.limits { display: grid; gap: 2.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); }
+.limits ul { margin: .8rem 0 0; padding-left: 1.15rem; display: grid; gap: .6rem; }
+.warnbox { background: var(--warn-bg); color: var(--fg); border: 1px solid var(--warn); border-radius: 4px; padding: 1rem 1.15rem; margin-top: 2.25rem; max-width: 50rem; }
+.warnbox b { color: var(--warn); }
+ol.steps { margin: .8rem 0 0; padding-left: 1.25rem; display: grid; gap: .6rem; }
+
+footer { background: var(--bar); color: var(--bar-fg); font-size: .92rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: .6rem 2rem; justify-content: space-between; padding-block: 1.8rem; }
+footer a { color: var(--bar-fg); }
+
+@media (max-width: 860px) {
+  .hero .wrap, .rig, .measure { grid-template-columns: minmax(0, 1fr); }
+  .log { min-height: 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <b>Smart Home MQTT · V4</b>
+    <nav aria-label="Seções">
+      <a href="#bancada">Bancada</a>
+      <a href="#zonas">Zonas</a>
+      <a href="#medido">O que foi medido</a>
+      <a href="#armadilhas">Armadilhas</a>
+      <a href="#limites">Limites</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div class="hero-text">
+      <p class="topic">casa/&lt;zona&gt;/&lt;grandeza&gt;</p>
+      <h1>Uma casa inteligente em que cada zona pensa por conta própria</h1>
+      <p class="lede">Seis controladores conversam com uma Central por publish/subscribe, dentro do Cisco Packet Tracer. Cada zona automatiza o próprio ambiente e, se a Central reiniciar, volta a conectar sozinha. Projeto de Redes e IoT do IFMA Campus Monte Castelo.</p>
+      <ul class="facts">
+        <li><b>6</b> zonas</li>
+        <li><b>1</b> Central</li>
+        <li><b>TCP :1883</b> com JSON</li>
+        <li><b>PT 9.0.1</b></li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/planta.webp" width="1800" height="1344" alt="Ilustração isométrica da casa, com jardim, sala, cozinha, quarto, garagem e perímetro, e a legenda de zonas com seus controladores.">
+      <figcaption>A planta de zonas usada como fundo da topologia no simulador.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<section class="bench" id="bancada">
+  <div class="wrap">
+    <div class="head">
+      <h2>O que a bancada registrou</h2>
+      <p class="lede">Escolha uma situação para ver o LCD da Central, a faixa do painel web e o trecho do log. Tudo vem da bancada de 3 de novembro de 2026.</p>
+    </div>
+    <div class="rig">
+      <div class="scenes" role="group" aria-label="Situações registradas">
+        <button class="scene" type="button" id="s-casa" data-s="casa" aria-pressed="true">Em casa</button>
+        <button class="scene" type="button" id="s-viagem" data-s="viagem" aria-pressed="false">Modo viagem</button>
+        <button class="scene" type="button" id="s-intrusao" data-s="intrusao" aria-pressed="false">Intrusão na sala</button>
+        <button class="scene" type="button" id="s-cartao" data-s="cartao" aria-pressed="false">Cartão inválido</button>
+        <button class="scene" type="button" id="s-gas" data-s="gas" aria-pressed="false">Fumaça sobre o acesso</button>
+        <button class="scene" type="button" id="s-porta" data-s="porta" aria-pressed="false">Porta sem o Perímetro</button>
+      </div>
+      <div class="lcd-col">
+        <div class="lcd" aria-label="LCD da Central">
+          <div class="lcd-inner"><div class="lcd-screen" id="lcd" aria-live="polite">CASA OK
+Modo normal</div></div>
+        </div>
+        <div class="web" aria-label="Faixa do painel web">
+          <div class="band" id="band" data-kind="ok"><b id="band-t">CASA OK</b><span id="band-s">Modo: casa · conectados: 7 · publicando: 6</span></div>
+        </div>
+      </div>
+      <div class="log-wrap">
+        <span class="log-title" id="log-t">Terminal da Central</span>
+        <pre class="log" id="log" tabindex="0">21:47:31 Broker ouvindo na porta 1883
+21:47:31 Painel web em http://192.168.1.100:80
+21:47:31 CASA OK | Modo normal
+21:47:32 Zona conectada: 192.168.1.22</pre>
+      </div>
+      <p class="note">É uma reprodução de registros reais. Esta página não está ligada ao simulador, porque a rede do Packet Tracer não é acessível pela internet. A faixa foi recriada a partir do painel, e a captura original está mais abaixo.</p>
+    </div>
+  </div>
+</section>
+
+<section id="zonas">
+  <div class="wrap">
+    <div class="head">
+      <h2>Seis zonas e uma Central</h2>
+      <p class="lede">Cada zona lê seus sensores e aciona seus atuadores no próprio controlador. A rede leva o estado para a Central e traz os comandos.</p>
+    </div>
+    <div class="zones">
+      <article class="zone" style="--c: var(--z-sala)"><div class="swatch"></div><div class="zone-body"><h3>Sala</h3><span class="zone-meta">SBC · 192.168.1.22</span><p>Liga o ar-condicionado e o ventilador a 30 °C e só desliga abaixo de 28 °C. O LED RGB mostra o estado.</p></div></article>
+      <article class="zone" style="--c: var(--z-coz)"><div class="swatch"></div><div class="zone-body"><h3>Cozinha</h3><span class="zone-meta">SBC · 192.168.1.23</span><p>Com fumaça ou CO a partir de 20 %, aciona juntos sprinkler, janela, exaustor e alarme. Ignora o modo viagem.</p></div></article>
+      <article class="zone" style="--c: var(--z-qua)"><div class="swatch"></div><div class="zone-body"><h3>Quarto</h3><span class="zone-meta">SBC · 192.168.1.24</span><p>Climatização, umidificador e luz de presença: o LED só acende com movimento e ambiente escuro.</p></div></article>
+      <article class="zone" style="--c: var(--z-jar)"><div class="swatch"></div><div class="zone-body"><h3>Jardim</h3><span class="zone-meta">SBC · 192.168.1.25</span><p>Estação meteorológica. Irriga com até 15 cm de água, drena a partir de 80 cm e acende a luminária ao escurecer. Ignora o modo viagem.</p></div></article>
+      <article class="zone" style="--c: var(--z-gar)"><div class="swatch"></div><div class="zone-body"><h3>Garagem</h3><span class="zone-meta">MCU · 192.168.1.26</span><p>Com CO ou CO₂ a partir de 20 %, abre a porta, liga o exaustor e toca o alarme.</p></div></article>
+      <article class="zone" style="--c: var(--z-per)"><div class="swatch"></div><div class="zone-body"><h3>Perímetro</h3><span class="zone-meta">MCU · 192.168.1.21 · RFID .33</span><p>Campainha, movimento e porta de entrada. O leitor RFID é um nó próprio, que publica o cartão lido.</p></div></article>
+      <article class="zone" style="--c: var(--z-cen)"><div class="swatch"></div><div class="zone-body"><h3>Central</h3><span class="zone-meta">SBC · 192.168.1.100</span><p>Recebe as publicações, cruza as zonas e decide o alerta. Controla o LCD e o Home Speaker e serve o painel web.</p></div></article>
+    </div>
+
+    <div class="flow-box" role="img" aria-label="Diagrama: as zonas e o leitor RFID publicam na Central pela porta 1883; a Central envia comandos às zonas e serve o painel ao PC na porta 80.">
+      <svg class="flow" viewBox="0 0 900 190" aria-hidden="true">
+        <defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="tip" d="M0 0 L10 5 L0 10 Z" style="stroke:none"/></marker></defs>
+        <rect class="n" x="10" y="40" width="230" height="110" rx="4"/>
+        <text class="t" x="28" y="76">Zonas e RFID</text>
+        <text x="28" y="102">zona_*.py</text>
+        <text class="m" x="28" y="126">TCPClient</text>
+        <rect class="n" x="360" y="40" width="210" height="110" rx="4"/>
+        <text class="t" x="378" y="76">Central</text>
+        <text x="378" y="102">broker_central.py</text>
+        <text class="m" x="378" y="126">TCPServer :1883</text>
+        <rect class="n" x="690" y="40" width="200" height="110" rx="4"/>
+        <text class="t" x="708" y="76">PC</text>
+        <text x="708" y="102">navegador</text>
+        <text class="m" x="708" y="126">painel e /estado</text>
+        <path d="M240 78 H358" marker-end="url(#seta)"/>
+        <text class="m" x="258" y="68">publica</text>
+        <path d="M360 118 H242" marker-end="url(#seta)"/>
+        <text class="m" x="258" y="136">cmd/&lt;atuador&gt;</text>
+        <path d="M690 95 H572" marker-end="url(#seta)"/>
+        <text class="m" x="600" y="85">HTTP :80</text>
+      </svg>
+    </div>
+    <p class="lede" style="margin-top:1.5rem">O Packet Tracer não tem um pacote <code>mqtt</code> acessível por script. Por isso, o padrão foi reproduzido sobre <code>tcp</code> e <code>json</code>, na porta oficial 1883: cada mensagem é <code>{"topic": "casa/sala/temp", "payload": 27}</code>.</p>
+  </div>
+</section>
+
+<section class="alt" id="medido">
+  <div class="wrap">
+    <div class="head">
+      <h2>O que foi medido no simulador</h2>
+      <p class="lede">Packet Tracer 9.0.1.0858, em 3 de novembro de 2026.</p>
+    </div>
+    <div class="measure">
+      <div class="table-box">
+        <table>
+          <thead><tr><th scope="col">Item</th><th scope="col">Resultado</th></tr></thead>
+          <tbody>
+            <tr><td>Abertura do arquivo</td><td class="num">Os 7 nós conectam sozinhos, cerca de 25 s depois de abrir, sem nenhuma mensagem descartada</td></tr>
+            <tr><td>Central reiniciada</td><td class="num">Os 7 nós voltam em 3 s</td></tr>
+            <tr><td>Temperatura</td><td class="num">Sobe a cerca de 2,4 °C/min e acompanha a curva de São Luís: 27,9 °C medidos e 27,9 °C previstos</td></tr>
+            <tr><td>Ar-condicionado</td><td class="num">Liga na hora prevista. Em 8 ciclos, fica entre 28,5 e 30,3 °C e volta à curva: 30,71 °C contra 30,73 °C</td></tr>
+            <tr><td>Fumaça e CO</td><td>Atuadores da Cozinha e da Garagem visíveis na planta, e <code>ALERTA DE GAS</code> na Central</td></tr>
+            <tr><td>Modo viagem</td><td>Movimento em Sala, Quarto e Garagem vira <code>INTRUSAO!</code> no LCD e no painel. Em casa, a Sala e o Quarto não alertam</td></tr>
+            <tr><td>Cartão</td><td>O válido abre e fecha a porta. O inválido não trava o LCD. O alerta de gás passa na frente do aviso de acesso</td></tr>
+            <tr><td>Versão Linux</td><td>O mesmo arquivo mostrou <code>conectados: 7 · publicando: 6</code> no PT 9.0.1 para Linux</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure>
+        <img class="shot" src="img/painel-real.webp" width="855" height="735" alt="Captura do painel real no navegador do simulador: faixa verde CASA OK, conectados 7, publicando 6, com as tabelas da Cozinha, da Garagem e do Jardim.">
+        <figcaption>Captura do painel servido pela Central, dentro do simulador.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="armadilhas">
+  <div class="wrap">
+    <div class="head">
+      <h2>Armadilhas que o simulador não avisa</h2>
+      <p class="lede">O Packet Tracer raramente dá erro. Quase tudo abaixo apareceu como um log dizendo que funcionou, enquanto nada acontecia.</p>
+    </div>
+    <div class="traps">
+      <article class="trap">
+        <p class="sym">Irrigacao: LIGOU</p>
+        <h3>A função errada não dá erro</h3>
+        <p>O sprinkler pede <code>customWrite</code>. Com <code>digitalWrite</code>, o script seguia e o log confirmava, mas ele nunca jorrava. Antes de programar um dispositivo, leia as seções <em>Local Control</em> e <em>Data Specifications</em> na aba Specifications dele.</p>
+      </article>
+      <article class="trap">
+        <p class="sym">Reconectando ao broker...</p>
+        <h3>Repetir <code>connect()</code> nunca conecta</h3>
+        <p>A zona que sobe antes da Central fica tentando para sempre com o mesmo <code>TCPClient</code>. A solução é fechar e criar um cliente novo a cada tentativa. Foi isso que acabou com o Stop e Run manual.</p>
+      </article>
+      <article class="trap">
+        <p class="sym">nivel=0</p>
+        <h3>Nem todo sensor tem GPIO</h3>
+        <p>Com 42 cm de água no ambiente, o Water Level Monitor lia 0. Se a documentação diz <em>Direct Control: N/A</em>, ele só mostra o valor. O dado vem de <code>Environment.get("Water Level")</code>.</p>
+      </article>
+      <article class="trap">
+        <p class="sym">alarme ainda ligado</p>
+        <h3>A saída sobrevive ao Stop</h3>
+        <p>Parar o script não desliga o pino. Por isso, cada zona precisa deixar os atuadores em estado conhecido quando começa a rodar.</p>
+      </article>
+      <article class="trap">
+        <p class="sym">Temp 2C</p>
+        <h3>Cada contêiner tem o seu clima</h3>
+        <p>Reinstalar o simulador devolve o clima de fábrica, que fica em 0 °C à noite. Importe o clima no contêiner onde estão os dispositivos e salve: o arquivo guarda o ambiente.</p>
+      </article>
+      <article class="trap">
+        <p class="sym">Smoke Detector = -1</p>
+        <h3>Um ID inexistente devolve −1</h3>
+        <p><code>Environment.get()</code> não dá erro quando o nome está errado. Um valor negativo pode ser só um nome digitado errado.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="limites">
+  <div class="wrap">
+    <div class="head">
+      <h2>Limites conhecidos</h2>
+      <p class="lede">O sistema funciona, e estes pontos continuam em aberto.</p>
+    </div>
+    <div class="limits">
+      <div>
+        <h3>Sem causa encontrada</h3>
+        <ul>
+          <li>Ao abrir o arquivo, a temperatura cai de 26 °C para cerca de 12,9 °C antes de subir até a curva. Espere uns 12 minutos antes de confiar nela.</li>
+          <li>A memória do Packet Tracer cresce de 64 a 100 MB por minuto com este arquivo aberto, mesmo sem nenhum script rodando.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Ainda não comprovado</h3>
+        <ul>
+          <li>O arquivo em outro computador. Até aqui, ele rodou em uma só máquina, no Windows e no Linux.</li>
+          <li>O som do Home Speaker: nem o log nem a planta mostram se ele tocou.</li>
+          <li>O umidificador ligando de verdade: a umidade do clima de São Luís não desce de 62 %.</li>
+          <li>Cada zona testada sozinha, sem a Central. Elas foram testadas juntas.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Para a próxima versão</h3>
+        <ul>
+          <li>Alarme por e-mail</li>
+          <li>Botões de comando no painel</li>
+          <li>Vitrine com o serviço MQTT real do simulador</li>
+        </ul>
+      </div>
+    </div>
+    <p class="warnbox"><b>Em bancada ou aula:</b> feche o Packet Tracer a cada 45 minutos. Reabrir o arquivo não devolve a memória. Só fechar o programa resolve.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>IFMA Campus Monte Castelo · Atividade prática de Redes e IoT · Licença MIT</span>
+    <a href="https://github.com/ccfernandes600/ifma-smart-home-packet-tracer">Versão anterior do projeto (V3) no GitHub</a>
+  </div>
+</footer>
+
+<script>
+// Trechos copiados dos logs da bancada de 03/11/2026; "ev" marca os eventos e "rx" as mensagens recebidas.
+var CENAS = {
+  casa: { lcd: "CASA OK\nModo normal", kind: "ok", t: "CASA OK", s: "Modo: casa · conectados: 7 · publicando: 6", titulo: "Terminal da Central",
+    log: [["", "21:47:31 Broker ouvindo na porta 1883"], ["", "21:47:31 Painel web em http://192.168.1.100:80"], ["ev", "21:47:31 CASA OK | Modo normal"], ["", "21:47:32 Zona conectada: 192.168.1.22"]] },
+  viagem: { lcd: "MODO VIAGEM\nMonitorando", kind: "viagem", t: "MODO VIAGEM", s: "Modo: viagem · conectados: 7 · publicando: 6", titulo: "Terminal da Central",
+    log: [["ev", "21:49:56 MODO VIAGEM | Monitorando"], ["", "21:49:56 Modo viagem = True"]] },
+  intrusao: { lcd: "INTRUSAO!\nNa sala", kind: "alerta", t: "INTRUSAO NA SALA", s: "Modo: viagem · conectados: 7 · publicando: 6", titulo: "Terminal da Central",
+    log: [["rx", "21:50:08 RX  casa/sala/movimento = 1"], ["ev", "21:50:08 INTRUSAO! | Na sala"], ["rx", "21:50:21 RX  casa/sala/movimento = 0"], ["ev", "21:50:21 MODO VIAGEM | Monitorando"]] },
+  cartao: { lcd: "CARTAO NEGADO\nID 9999", kind: "ok", t: "CASA OK", s: "Modo: casa · conectados: 7 · publicando: 6", titulo: "Terminal da Central",
+    log: [["rx", "21:54:50 RX  casa/perimetro/rfid = 9999"], ["ev", "21:54:50 CARTAO NEGADO | ID 9999"], ["ev", "21:54:57 CASA OK | Modo normal"]] },
+  gas: { lcd: "ALERTA DE GAS\nVerifique casa", kind: "alerta", t: "ALERTA DE GAS", s: "Modo: casa · conectados: 7 · publicando: 6", titulo: "Terminal da Central",
+    log: [["rx", "21:55:01 RX  casa/perimetro/rfid = 1005"], ["ev", "21:55:01 ACESSO OK | Cartao 1005"], ["rx", "21:55:04 RX  casa/cozinha/fumaca = 30"], ["ev", "21:55:04 ALERTA DE GAS | Verifique casa"], ["", "21:55:07 Porta do perimetro fechada automaticamente"], ["rx", "21:55:14 RX  casa/cozinha/fumaca = 0"], ["ev", "21:55:14 CASA OK | Modo normal"]] },
+  porta: { lcd: "ACESSO OK\nCartao 1005", kind: "ok", t: "CASA OK", s: "Modo: casa · conectados: 6", titulo: "Terminal da Central",
+    log: [["ev", "22:04:57 ACESSO OK | Cartao 1005"], ["", "22:05:02 Conexoes encerradas removidas: 7 -> 6"], ["", "22:05:04 Comando nao entregue (zona 192.168.1.21 offline)"], ["ev", "22:05:04 CASA OK | Modo normal"], ["", "22:05:11 Comando nao entregue (zona 192.168.1.21 offline)"], ["", "22:05:17 Comando nao entregue (zona 192.168.1.21 offline)"], ["", "22:05:23 Zona conectada: 192.168.1.21"], ["ev", "22:05:23 Porta do perimetro fechada automaticamente"]] }
+};
+
+var botoes = document.querySelectorAll(".scene");
+
+function mostrar(chave) {
+  var c = CENAS[chave];
+  document.getElementById("lcd").textContent = c.lcd;
+  var band = document.getElementById("band");
+  band.dataset.kind = c.kind;
+  document.getElementById("band-t").textContent = c.t;
+  document.getElementById("band-s").textContent = c.s;
+  document.getElementById("log-t").textContent = c.titulo;
+  var log = document.getElementById("log");
+  log.textContent = "";
+  c.log.forEach(function (linha) {
+    var s = document.createElement("span");
+    if (linha[0]) s.className = linha[0];
+    s.textContent = linha[1] + "\n";
+    log.appendChild(s);
+  });
+  botoes.forEach(function (b) {
+    b.setAttribute("aria-pressed", b.dataset.s === chave ? "true" : "false");
+  });
+}
+
+botoes.forEach(function (b) {
+  b.addEventListener("click", function () { mostrar(b.dataset.s); });
+});
+mostrar("casa");
+</script>
+</body>
+</html>

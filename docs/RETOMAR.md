@@ -93,6 +93,8 @@ o que é compatível com a queda ao abrir o arquivo, sem medição contínua. No
 `libxcb-cursor0`. Valeu como segundo sistema, mas não como outra máquina: mesmo computador e mesmo usuário. Só o painel
 foi conferido; os demais comportamentos não foram repetidos no Linux.
 
+**Site público, em 04/11:** https://ifma-smart-home-mqtt.netlify.app, com fonte em `web/`. Mostra os logs da bancada como reprodução, sem dados ao vivo. Não oferece o `.pkt`: este repositório é privado, e isso ainda é decisão em aberto. Para publicar de novo: `npx netlify-cli@17 deploy --prod --dir web` (sem `web/desktop.ini`).
+
 **Limite do teste:** a Etapa 2 do `TESTE_ISOLADO` (cada zona sozinha, sem a Central) não foi feita zona a zona. As zonas
 foram testadas juntas, e o funcionamento sem a Central só foi visto no arranque.
 
