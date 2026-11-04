@@ -4,7 +4,9 @@
 
 **V4 finalizado, com a casa ao vivo no site.** Conferido ao reabrir o `.pkt` oficial: 8 scripts iguais ao `src/`, 7 nós conectados, nenhuma mensagem descartada e nenhum acesso à internet.
 
-**Em aberto:** testar em outra máquina (aguarda o notebook), causa da queda de temperatura ao abrir o arquivo, causa do consumo de memória do PT, prova direta do Home Speaker e do umidificador, e decisão sobre publicar o repositório e o `.pkt`.
+**Em aberto:** testar em outra máquina (aguarda o notebook), causa da queda de temperatura ao abrir o arquivo, causa do consumo de memória do PT, prova direta do Home Speaker e do umidificador.
+
+**Repositório público desde 04/11/2026:** varredura de texto no histórico sem chave nem dados pessoais, além do e-mail de commit. Tudo que entra no `main` passa a ser visto por todos: a chave e a cópia ao vivo nunca entram.
 
 ## Casa ao vivo (04/11/2026)
 
