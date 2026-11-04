@@ -352,6 +352,8 @@ Modo normal</div></div>
             <tr><td>Modo viagem</td><td>Movimento em Sala, Quarto e Garagem vira <code>INTRUSAO!</code> no LCD e no painel. Em casa, a Sala e o Quarto não alertam</td></tr>
             <tr><td>Cartão</td><td>O válido abre e fecha a porta. O inválido não trava o LCD. O alerta de gás passa na frente do aviso de acesso</td></tr>
             <tr><td>Saída para a internet</td><td>Um script no SBC buscou este site por HTTPS (<code>200</code>) e enviou dados à função na nuvem, depois da autorização pedida pelo simulador</td></tr>
+            <tr><td>Central desligada</td><td>Perímetro, Garagem e Quarto seguem reagindo a movimento e campainha, com aviso de que estão sem broker</td></tr>
+            <tr><td>Old Car</td><td>Com o carro ligado, a Garagem cruza 20 % e a Central dá <code>ALERTA DE GAS</code>; com ele desligado, a casa volta ao normal em cerca de 20 s</td></tr>
             <tr><td>Versão Linux</td><td>O mesmo arquivo mostrou <code>conectados: 7 · publicando: 6</code> no PT 9.0.1 para Linux</td></tr>
           </tbody>
         </table>
@@ -425,7 +427,7 @@ Modo normal</div></div>
           <li>O arquivo em outro computador. Até aqui, ele rodou em uma só máquina, no Windows e no Linux.</li>
           <li>O som do Home Speaker: nem o log nem a planta mostram se ele tocou.</li>
           <li>O umidificador ligando de verdade: a umidade do clima de São Luís não desce de 62 %.</li>
-          <li>Cada zona testada sozinha, sem a Central. Elas foram testadas juntas.</li>
+          <li>A falha de rede durante o envio ao site, que só foi testada no código, sem cortar a internet de verdade.</li>
         </ul>
       </div>
       <div>

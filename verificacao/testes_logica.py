@@ -332,6 +332,36 @@ def nuvem_falha_nao_derruba_a_central():
     confere(any("Nuvem" in x and "ok" in x for x in z["logs"]), "nao registrou a volta")
 
 
+def nuvem_sobrevive_a_publicacao_simultanea():
+    """As zonas publicam em outra linha de execução: montar o JSON pode dar
+    "dict changed size during iteration" (medido em 04/11). A Central não pode cair."""
+    z = central_com_chave()
+    m = z["m"]
+    original = m.dumps
+
+    def falha(*a, **k):
+        raise RuntimeError("dictionary changed size during iteration")
+
+    m.dumps = falha
+    z["relogio"]["t"] = 100
+    m.enviar_nuvem()  # não pode propagar a exceção
+    confere(any("falhou" in x for x in z["logs"]), "a falha nao foi registrada")
+    m.dumps = original
+    z["relogio"]["t"] = 100 + m.NUVEM_INTERVALO
+    m.enviar_nuvem()
+    confere(len(z["nuvem"]["posts"]) == 1, "nao tentou de novo no ciclo seguinte")
+
+
+def garagem_reconhece_o_carro_ligado():
+    """Com o clima de São Luís, o Old Car ligado deixa o CO em torno de 0,008 % e não
+    acumula (medido em 04/11). Com o ar limpo, o CO é 0 e a rampa não pode subir."""
+    z = carregar("zona_garagem", {"CO": 0.0, "CO2": 0.0})
+    m = z["m"]
+    confere(not m.carro_ligado(), "ar limpo contou como carro ligado")
+    z["env"]["CO"] = 0.008
+    confere(m.carro_ligado(), "nao reconheceu o carro ligado")
+
+
 # --- Zonas: estado inicial e logs ------------------------------------------- #
 def cozinha_nasce_com_atuadores_desligados():
     z = carregar("zona_cozinha", {"Smoke": 0.0, "CO": 0.0})
@@ -402,6 +432,8 @@ caso("Central: envia o resumo ao site", nuvem_envia_o_resumo)
 caso("Central: envio respeita intervalo e pulso", nuvem_respeita_intervalo_e_pulso)
 caso("Central: envio nao empilha nem prende", nuvem_nao_empilha_nem_prende)
 caso("Central: falha de rede nao derruba", nuvem_falha_nao_derruba_a_central)
+caso("Central: publicacao simultanea nao derruba", nuvem_sobrevive_a_publicacao_simultanea)
+caso("Garagem: reconhece o carro ligado", garagem_reconhece_o_carro_ligado)
 caso("Central: conexao nova sobrevive a limpeza", conexao_nova_sobrevive_a_limpeza)
 caso("Central: movimento na sala/quarto em viagem e intrusao", movimento_interno_em_viagem_e_intrusao)
 caso("Central: movimento na sala com gente em casa nao alarma", movimento_interno_em_casa_nao_alarma)

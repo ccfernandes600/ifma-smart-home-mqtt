@@ -48,7 +48,9 @@ TETO_DEMO = 30  # % onde a rampa inverte e comeca a "ventilar"
 
 # Limiares p/ detectar o Old Car ligado, calibrados com medicoes reais no PT:
 # desligado -> CO=0.0017%, CO2=0.039% | ligado (alguns min) -> CO=0.06%, CO2=0.157%
-LIMIAR_CO_LIGADO = 0.01  # % -- acima disso, ha uma fonte real de CO ativa
+# Medido em 04/11/2026, com o clima de Sao Luis: ar limpo da 0, e o Old Car ligado
+# deixa o CO perto de 0.008%, sem acumular.
+LIMIAR_CO_LIGADO = 0.005  # % -- acima disso, ha uma fonte real de CO ativa
 LIMIAR_CO2_LIGADO = 0.08  # % -- acima da linha de base atmosferica (~0.04%)
 
 _co_demo = 0.0

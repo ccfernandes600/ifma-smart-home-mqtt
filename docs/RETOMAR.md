@@ -1,5 +1,11 @@
 # Retomar o V4
 
+## Estado do projeto (04/11/2026)
+
+**V4 finalizado, com a casa ao vivo no site.** Conferido ao reabrir o `.pkt` oficial: 8 scripts iguais ao `src/`, 7 nós conectados, nenhuma mensagem descartada e nenhum acesso à internet.
+
+**Em aberto:** testar em outra máquina (aguarda o notebook), causa da queda de temperatura ao abrir o arquivo, causa do consumo de memória do PT, prova direta do Home Speaker e do umidificador, e decisão sobre publicar o repositório e o `.pkt`.
+
 ## Casa ao vivo (04/11/2026)
 
 O V4 está finalizado e testado, e o site público está em https://ifma-smart-home-mqtt.netlify.app.
@@ -16,6 +22,11 @@ função `/api/estado`, a cada 10 s quando algo muda, e a cada 60 s no mínimo. 
 
 **Para demonstrar:** abra a cópia ao vivo e clique em **`Yes to All`** no aviso `External Network Access`. Ele volta a cada
 abertura e, com `Yes` simples, a cada envio. Enquanto o aviso estiver aberto, nada é enviado.
+
+**Corrigido nesta rodada:**
+
+- Montar o resumo enquanto uma zona publicava deu `dict changed size during iteration`. Agora fica dentro do `try`, e a Central tenta no ciclo seguinte. Painel e `/estado` usam o mesmo dicionário: uma recarga pode falhar nesse instante, sem derrubar a Central.
+- Com o clima de São Luís, o Old Car ligado estabiliza o CO perto de 0,008 %, abaixo do gatilho antigo de 0,01 %. O gatilho passou a 0,005 %. Medido: `ALERTA DE GAS` no site público, e `CASA OK` cerca de 20 s depois de desligar o carro.
 
 **Medido:** Alt+clique no movimento da Sala, em modo viagem, chegou à API pública como `INTRUSAO NA SALA` em cerca de 6 s; o modo viagem
 levou ~20 s, somando o intervalo de envio e o cache de 5 s. O teste de falha de rede só foi feito com dublê.
@@ -102,7 +113,6 @@ Ao abrir o `.pkt`, o ambiente estava de novo em 12,9 °C: a queda inicial é rep
 - **Home Speaker:** nada no log nem na planta mostra o som; só o código e o teste de lógica.
 - **Umidificador:** a API está na doc do device, mas ele nunca ligou: o perfil não desce de 62 %, e a umidade não
   responde à contribuição. O corte em modo viagem só tem teste de lógica.
-- **Old Car:** não acionei; a Garagem foi testada com CO injetado.
 
 **Bloco 8 — fechamento (22:27):** reaberto do zero, os 8 scripts do `.pkt` estão iguais ao `src/`, e os 7 nós conectaram
 sozinhos, 25 s depois de abrir, sem nenhuma mensagem descartada. **Critério de V4 finalizado: cumprido.**
@@ -117,8 +127,7 @@ foi conferido; os demais comportamentos não foram repetidos no Linux.
 
 **O simulador fala com a internet (04/11):** de um script no SBC, `RealHTTPClient` buscou o site por HTTPS (`200`, com o HTML) e enviou um estado por POST à função `/api/estado` (`200 {"ok":true,"topicos":2}`, e a API pública devolveu os valores). O PT pede autorização por arquivo e por endereço, na janela `External Network Access`; respondi `Yes` só para os dois endereços do site. Os callbacks de `onDone` recebem `(status, corpo)`. O site ainda não mostra esses dados, e o `.pkt` validado não mudou.
 
-**Limite do teste:** a Etapa 2 do `TESTE_ISOLADO` (cada zona sozinha, sem a Central) não foi feita zona a zona. As zonas
-foram testadas juntas, e o funcionamento sem a Central só foi visto no arranque.
+**Central desligada (04/11):** Perímetro, Garagem e Quarto seguiram reagindo a movimento e campainha, com os avisos de falta de broker. Sala seguiu lendo a temperatura. Cozinha e Jardim não foram acionados nessa condição; o código deles não depende da Central.
 
 **Medições novas:**
 

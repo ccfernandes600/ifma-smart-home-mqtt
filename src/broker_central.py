@@ -420,17 +420,19 @@ def enviar_nuvem():
         return
     if decorrido < NUVEM_INTERVALO:
         return
-    conteudo = dumps(resumo_para_o_site())
-    if conteudo == _nuvem_conteudo and decorrido < NUVEM_PULSO:
-        return
-    if _nuvem_esperando:  # ficou sem resposta: recomeca com um cliente novo
-        _nuvem_cliente = None
-        _nuvem_esperando = False
     try:
+        # As zonas publicam em outra linha de execucao: montar o JSON pode dar "dict
+        # changed size during iteration" (medido em 04/11/2026). Tenta no proximo ciclo.
+        resumo = resumo_para_o_site()
+        conteudo = dumps(resumo)
+        if conteudo == _nuvem_conteudo and decorrido < NUVEM_PULSO:
+            return
+        if _nuvem_esperando:  # ficou sem resposta: recomeca com um cliente novo
+            _nuvem_cliente = None
+            _nuvem_esperando = False
         if _nuvem_cliente is None:
             _nuvem_cliente = RealHTTPClient()
             _nuvem_cliente.onDone(ao_responder_nuvem)
-        resumo = resumo_para_o_site()
         resumo["chave"] = NUVEM_CHAVE
         _nuvem_cliente.post(NUVEM_URL, dumps(resumo))
         _nuvem_conteudo = conteudo
