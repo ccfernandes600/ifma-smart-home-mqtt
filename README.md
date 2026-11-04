@@ -44,7 +44,8 @@ número de dispositivos IoT.
 - [x] **Segurança:** fumaça e CO disparam os atuadores; o alerta passa na frente do aviso de cartão
 - [x] **Reconexão:** a zona que sobe antes da Central, ou perde a Central, volta sozinha
 - [x] **Clima de São Luís** gravado no `.pkt`: o ambiente acompanha a curva, e o AC liga no horário previsto
-- [ ] Testar o `.pkt` em outra máquina
+- [x] Abrir o `.pkt` na versão Linux do Packet Tracer 9.0.1 (no WSL): `conectados: 7 · publicando: 6`, sem Stop → Run
+- [ ] Testar o `.pkt` em outra máquina, com outro perfil
 - [ ] Umidificador: sem acionamento real, porque o perfil de São Luís não desce de 62 % de umidade
 
 **Fora desta versão (V4.1):** alarme por e-mail, botões no painel e vitrine com MQTT real. Detalhes de cada medição em

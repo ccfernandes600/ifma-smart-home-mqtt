@@ -87,6 +87,12 @@ Ao abrir o `.pkt`, o ambiente estava de novo em 12,9 °C: a queda inicial é rep
 **Bloco 8 — fechamento (22:27):** reaberto do zero, os 8 scripts do `.pkt` estão iguais ao `src/`, e os 7 nós conectaram
 sozinhos, 25 s depois de abrir, sem nenhuma mensagem descartada. **Critério de V4 finalizado: cumprido.**
 
+**Versão Linux, em 04/11:** o PT 9.0.1 (AppImage, no WSL) abriu o mesmo `.pkt`: planta completa, `conectados: 7 ·
+publicando: 6` e as seis tabelas, sem Stop → Run. O ambiente marcava 18 °C e 85 % ainda de madrugada, abaixo da curva,
+o que é compatível com a queda ao abrir o arquivo, sem medição contínua. No WSL, foi preciso instalar `libopengl0` e
+`libxcb-cursor0`. Valeu como segundo sistema, mas não como outra máquina: mesmo computador e mesmo usuário. Só o painel
+foi conferido; os demais comportamentos não foram repetidos no Linux.
+
 **Limite do teste:** a Etapa 2 do `TESTE_ISOLADO` (cada zona sozinha, sem a Central) não foi feita zona a zona. As zonas
 foram testadas juntas, e o funcionamento sem a Central só foi visto no arranque.
 
