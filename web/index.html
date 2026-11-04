@@ -128,6 +128,24 @@ figcaption { color: var(--muted); font-size: .88rem; margin-top: .6rem; }
 .log .ev { color: #fff; font-weight: 500; }
 .note { color: #b6c8d6; font-size: .92rem; grid-column: 1 / -1; }
 
+/* Casa ao vivo */
+.vivo-estado { display: flex; align-items: center; gap: .55rem; font-weight: 600; margin-bottom: 1.25rem; }
+.ponto { width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted); flex: none; }
+.vivo-estado[data-on="sim"] { color: var(--ok); }
+.vivo-estado[data-on="sim"] .ponto { background: var(--ok); animation: pulso 2s ease-in-out infinite; }
+@keyframes pulso { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .vivo-estado[data-on="sim"] .ponto { animation: none; } }
+.vivo { display: grid; gap: 1.5rem 2.5rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: start; }
+.vivo-zonas { display: grid; gap: 1.25rem 1.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); min-width: 0; }
+.vivo-zonas h3 { font-size: 1rem; margin-bottom: .25rem; }
+.vivo-zonas dl { margin: 0; display: grid; font-size: .95rem; }
+.vivo-zonas dl div { display: flex; justify-content: space-between; gap: 1rem; padding-block: .28rem; border-bottom: 1px solid var(--line); }
+.vivo-zonas dt { color: var(--muted); }
+.vivo-zonas dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vivo-vazio { color: var(--muted); }
+.caminho { max-width: 50rem; margin-top: 2rem; color: var(--muted); font-size: .98rem; }
+.caminho b { color: var(--fg); }
+
 /* Zonas */
 .zones { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); border-top: 1px solid var(--line); }
 .zone { display: grid; grid-template-columns: .55rem minmax(0, 1fr); gap: .95rem; padding-block: 1.25rem; padding-right: 1.25rem; border-bottom: 1px solid var(--line); }
@@ -175,7 +193,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: .6rem 2rem; justify-content:
 footer a { color: var(--bar-fg); }
 
 @media (max-width: 860px) {
-  .hero .wrap, .rig, .measure { grid-template-columns: minmax(0, 1fr); }
+  .hero .wrap, .rig, .measure, .vivo { grid-template-columns: minmax(0, 1fr); }
   .log { min-height: 0; }
 }
 </style>
@@ -186,6 +204,7 @@ footer a { color: var(--bar-fg); }
   <div class="wrap">
     <b>Smart Home MQTT · V4</b>
     <nav aria-label="Seções">
+      <a href="#ao-vivo">Ao vivo</a>
       <a href="#bancada">Bancada</a>
       <a href="#zonas">Zonas</a>
       <a href="#medido">O que foi medido</a>
@@ -215,6 +234,25 @@ footer a { color: var(--bar-fg); }
     </figure>
   </div>
 </div>
+
+<section class="alt" id="ao-vivo">
+  <div class="wrap">
+    <div class="head">
+      <h2>Casa ao vivo</h2>
+      <p class="lede">Quando o simulador está aberto, a Central envia o estado da casa para este site, com a mesma informação do painel interno. É uma casa simulada: os valores vêm do Packet Tracer, sem sensores físicos.</p>
+    </div>
+    <p class="vivo-estado" id="v-status" data-on="nao" role="status"><span class="ponto"></span><span id="v-status-t">Consultando o simulador...</span></p>
+    <div class="vivo">
+      <div class="lcd-col">
+        <div class="lcd" aria-label="LCD da Central, ao vivo"><div class="lcd-inner"><div class="lcd-screen" id="v-lcd"> 
+ </div></div></div>
+        <div class="web"><div class="band" id="v-band" style="background:#5b6b76"><b id="v-titulo">Sem dados recentes</b><span id="v-resumo">Aguardando o simulador</span></div></div>
+      </div>
+      <div class="vivo-zonas" id="v-zonas"></div>
+    </div>
+    <p class="caminho"><b>O caminho do dado:</b> de um script dentro do SBC simulado, <code>RealHTTPClient</code> envia o estado por HTTPS a uma função na nuvem, e esta página o consulta a cada 10 segundos. O simulador pede autorização antes de acessar cada endereço, e a chave de envio não é distribuída com o arquivo da turma.</p>
+  </div>
+</section>
 
 <section class="bench" id="bancada">
   <div class="wrap">
@@ -247,7 +285,7 @@ Modo normal</div></div>
 21:47:31 CASA OK | Modo normal
 21:47:32 Zona conectada: 192.168.1.22</pre>
       </div>
-      <p class="note">É uma reprodução de registros reais. Esta página não está ligada ao simulador, porque a rede do Packet Tracer não é acessível pela internet. A faixa foi recriada a partir do painel, e a captura original está mais abaixo.</p>
+      <p class="note">É uma reprodução de registros reais, e não muda com o simulador. A faixa foi recriada a partir do painel, e a captura original está mais abaixo.</p>
     </div>
   </div>
 </section>
@@ -313,6 +351,7 @@ Modo normal</div></div>
             <tr><td>Fumaça e CO</td><td>Atuadores da Cozinha e da Garagem visíveis na planta, e <code>ALERTA DE GAS</code> na Central</td></tr>
             <tr><td>Modo viagem</td><td>Movimento em Sala, Quarto e Garagem vira <code>INTRUSAO!</code> no LCD e no painel. Em casa, a Sala e o Quarto não alertam</td></tr>
             <tr><td>Cartão</td><td>O válido abre e fecha a porta. O inválido não trava o LCD. O alerta de gás passa na frente do aviso de acesso</td></tr>
+            <tr><td>Saída para a internet</td><td>Um script no SBC buscou este site por HTTPS (<code>200</code>) e enviou dados à função na nuvem, depois da autorização pedida pelo simulador</td></tr>
             <tr><td>Versão Linux</td><td>O mesmo arquivo mostrou <code>conectados: 7 · publicando: 6</code> no PT 9.0.1 para Linux</td></tr>
           </tbody>
         </table>
@@ -454,6 +493,95 @@ botoes.forEach(function (b) {
   b.addEventListener("click", function () { mostrar(b.dataset.s); });
 });
 mostrar("casa");
+
+// --- Casa ao vivo ---
+var GRANDEZAS = {
+  temp: ["Temperatura", " °C"], umidade: ["Umidade", " %"], luz: ["Luminosidade", ""], co: ["CO", " %"], co2: ["CO₂", " %"],
+  fumaca: ["Fumaça", " %"], agua: ["Nível de água", " cm"], vento: ["Vento", " km/h"], pressao: ["Pressão", " kPa"],
+  movimento: ["Movimento", ""], campainha: ["Campainha", ""], rfid: ["Último cartão", ""]
+};
+var ZONAS = { cozinha: "Cozinha", garagem: "Garagem", jardim: "Jardim", perimetro: "Perímetro", quarto: "Quarto", sala: "Sala" };
+var LIMITE_AO_VIVO_S = 150; // a Central envia ao menos a cada 60 s
+var FAIXA_SEM_DADOS = "#5b6b76";
+
+function el(id) { return document.getElementById(id); }
+
+function textoValor(chave, valor) {
+  if (chave === "movimento" || chave === "campainha") return valor ? "sim" : "não";
+  return String(valor).replace(".", ",") + (GRANDEZAS[chave] ? GRANDEZAS[chave][1] : "");
+}
+
+function desenharZonas(estado) {
+  var grupos = {};
+  Object.keys(estado).forEach(function (topico) {
+    var p = topico.split("/");
+    if (p.length !== 3 || !ZONAS[p[1]] || !GRANDEZAS[p[2]]) return;
+    (grupos[p[1]] = grupos[p[1]] || []).push([p[2], estado[topico]]);
+  });
+  var caixa = el("v-zonas");
+  caixa.textContent = "";
+  Object.keys(ZONAS).forEach(function (zona) {
+    if (!grupos[zona]) return;
+    var bloco = document.createElement("div");
+    var h = document.createElement("h3");
+    h.textContent = ZONAS[zona];
+    var dl = document.createElement("dl");
+    grupos[zona].sort(function (a, b) { return GRANDEZAS[a[0]][0] < GRANDEZAS[b[0]][0] ? -1 : 1; }).forEach(function (par) {
+      var linha = document.createElement("div");
+      var dt = document.createElement("dt");
+      dt.textContent = GRANDEZAS[par[0]][0];
+      var dd = document.createElement("dd");
+      dd.textContent = textoValor(par[0], par[1]);
+      linha.appendChild(dt);
+      linha.appendChild(dd);
+      dl.appendChild(linha);
+    });
+    bloco.appendChild(h);
+    bloco.appendChild(dl);
+    caixa.appendChild(bloco);
+  });
+}
+
+function hora(ms) {
+  return new Date(ms).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function desenharAoVivo(d) {
+  var completo = d && d.estado && d.titulo;
+  var aoVivo = completo && d.idade_s <= LIMITE_AO_VIVO_S;
+  var status = el("v-status");
+  status.dataset.on = aoVivo ? "sim" : "nao";
+  if (aoVivo) el("v-status-t").textContent = "Ao vivo · atualizado há " + d.idade_s + " s";
+  else if (completo) el("v-status-t").textContent = "Simulador desligado · último estado em " + hora(d.recebido_ms);
+  else el("v-status-t").textContent = "Simulador desligado · nenhum estado recebido ainda";
+  if (!completo) return;
+  el("v-lcd").textContent = (d.lcd[0] || "") + "\n" + (d.lcd[1] || "");
+  el("v-band").style.background = aoVivo ? d.cor : FAIXA_SEM_DADOS;
+  el("v-titulo").textContent = d.titulo;
+  el("v-resumo").textContent = "Modo: " + d.modo + " · conectados: " + d.conectados + " · publicando: " + d.publicando;
+  desenharZonas(d.estado);
+}
+
+var temporizador = null;
+function consultar() {
+  clearTimeout(temporizador);
+  fetch("/api/estado", { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (d) {
+      desenharAoVivo(d);
+      temporizador = setTimeout(consultar, d.titulo && d.idade_s <= LIMITE_AO_VIVO_S ? 10000 : 30000);
+    })
+    .catch(function () {
+      el("v-status").dataset.on = "nao";
+      el("v-status-t").textContent = "Não foi possível consultar a casa agora. Nova tentativa em 30 s.";
+      temporizador = setTimeout(consultar, 30000);
+    });
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.hidden) clearTimeout(temporizador);
+  else consultar();
+});
+consultar();
 </script>
 </body>
 </html>

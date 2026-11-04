@@ -20,6 +20,7 @@ from time import *
 from tcp import *
 from json import *
 from http import *
+from realhttp import *
 
 # --- Portas do proprio SBC Central ---
 BTN_MODO = 0  # D0: Push Button (alterna modo casa/viagem)
@@ -50,6 +51,16 @@ GRANDEZAS = {
 BINARIAS = ("movimento", "campainha")  # 0/1 viram texto, nao numero
 ATUALIZA_EM = 5  # segundos entre recargas automaticas da pagina
 
+# --- Site publico: a casa ao vivo ----------------------------------------
+# Com a chave vazia, a Central nao toca na internet e o PT nem abre o aviso
+# External Network Access. So a copia pessoal do .pkt recebe a chave; ela
+# nunca entra no git. Medido em 04/11/2026: RealHTTPClient sai por HTTPS.
+NUVEM_URL = "https://ifma-smart-home-mqtt.netlify.app/api/estado"
+NUVEM_CHAVE = ""
+NUVEM_INTERVALO = 10  # segundos minimos entre dois envios
+NUVEM_PULSO = 60  # sem mudanca, envia assim mesmo: e como o site sabe que ha simulador
+NUVEM_ESPERA = 30  # sem resposta nesse prazo, troca o cliente e tenta de novo
+
 # --- Estado global: ultimo valor recebido de cada topico ---
 estado = {}
 clientes = []
@@ -67,6 +78,12 @@ TELAS_URGENTES = ("ALERTA DE GAS", "INTRUSAO!")  # vencem o aviso de cartao
 PERIMETRO_IP = "192.168.1.21"
 _porta_fecha_em = 0  # uptime() em que a porta deve fechar (0 = fechada)
 _tela_rfid_ate = 0  # uptime() em que o aviso de cartao sai do LCD (0 = sem aviso)
+
+_nuvem_cliente = None
+_nuvem_enviado_em = None  # uptime() do ultimo envio
+_nuvem_conteudo = ""  # o que foi enviado por ultimo, para so reenviar o que mudou
+_nuvem_esperando = False  # envio sem resposta ainda
+_nuvem_ok = None  # resultado do ultimo envio; o log so registra a mudanca
 
 
 def log(msg):
@@ -362,6 +379,67 @@ def ler_modo(*args):
         log("Modo viagem = {}".format(modo_viagem))
 
 
+def resumo_para_o_site():
+    """O mesmo que o painel interno mostra: situacao, LCD, modo, contagens e valores."""
+    _l1, _l2, titulo, cor, _som = situacao_da_casa()
+    return {
+        "titulo": titulo,
+        "cor": cor,
+        "lcd": list(_ultima_tela) if _ultima_tela else [],
+        "modo": "viagem" if modo_viagem else "casa",
+        "conectados": len(clientes),
+        "publicando": len(linhas_por_zona()),
+        "estado": estado,
+    }
+
+
+def registrar_nuvem(deu_certo, detalhe):
+    """Loga so a mudanca: sem internet, repetir o aviso a cada 10 s afogaria o terminal."""
+    global _nuvem_ok
+    if deu_certo != _nuvem_ok:
+        log("Nuvem: envio {} ({})".format("ok" if deu_certo else "falhou", detalhe))
+    _nuvem_ok = deu_certo
+
+
+def ao_responder_nuvem(status, corpo):
+    """Resposta do site ao envio. Assinatura medida em 04/11/2026: (status, corpo)."""
+    global _nuvem_esperando
+    _nuvem_esperando = False
+    registrar_nuvem(status == 200, "HTTP {}".format(status))
+
+
+def enviar_nuvem():
+    """Manda o resumo ao site, quando mudou ou quando vence o pulso. Chamado a cada
+    ciclo; a rede pode falhar a qualquer momento, e a casa nao pode parar por isso."""
+    global _nuvem_cliente, _nuvem_enviado_em, _nuvem_conteudo, _nuvem_esperando
+    if not NUVEM_CHAVE:
+        return
+    agora = uptime()
+    decorrido = NUVEM_PULSO if _nuvem_enviado_em is None else agora - _nuvem_enviado_em
+    if _nuvem_esperando and decorrido < NUVEM_ESPERA:
+        return
+    if decorrido < NUVEM_INTERVALO:
+        return
+    conteudo = dumps(resumo_para_o_site())
+    if conteudo == _nuvem_conteudo and decorrido < NUVEM_PULSO:
+        return
+    if _nuvem_esperando:  # ficou sem resposta: recomeca com um cliente novo
+        _nuvem_cliente = None
+        _nuvem_esperando = False
+    try:
+        if _nuvem_cliente is None:
+            _nuvem_cliente = RealHTTPClient()
+            _nuvem_cliente.onDone(ao_responder_nuvem)
+        resumo = resumo_para_o_site()
+        resumo["chave"] = NUVEM_CHAVE
+        _nuvem_cliente.post(NUVEM_URL, dumps(resumo))
+        _nuvem_conteudo = conteudo
+        _nuvem_esperando = True
+    except Exception as erro:
+        registrar_nuvem(False, str(erro)[:60])
+    _nuvem_enviado_em = agora
+
+
 def setup():
     pinMode(BTN_MODO, IN)
     pinMode(LCD_MESTRE, OUT)
@@ -388,6 +466,7 @@ def main():
         limpar_clientes()  # mantem a contagem do painel honesta
         verificar_porta_rfid()  # fecha a porta do perimetro apos o prazo
         verificar_tela_rfid()  # devolve o LCD a tela de estado
+        enviar_nuvem()  # site publico; sem chave, nao faz nada
         sleep(1)
 
 

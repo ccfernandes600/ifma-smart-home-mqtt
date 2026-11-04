@@ -240,6 +240,98 @@ def json_invalido_fica_no_log():
     confere(any("descartada" in linha for linha in z["logs"]), "mensagem perdida em silencio")
 
 
+# --- Central: envio ao site público ----------------------------------------- #
+def central_com_chave():
+    z = carregar("broker_central")
+    z["m"].NUVEM_CHAVE = "chave-de-teste"
+    return z
+
+
+def sem_chave_nao_toca_na_internet():
+    z = carregar("broker_central")
+    m = z["m"]
+    confere(m.NUVEM_CHAVE == "", "o arquivo fonte traz uma chave")
+    z["relogio"]["t"] = 1000
+    m.enviar_nuvem()
+    confere(z["nuvem"]["criados"] == 0, "criou cliente sem chave: abriria o aviso do PT")
+    confere(not z["nuvem"]["posts"], "enviou sem chave")
+
+
+def nuvem_envia_o_resumo():
+    z = central_com_chave()
+    m = z["m"]
+    m.clientes.append(z["Cliente"]())
+    m.modo_viagem = True
+    publicacao(m, "casa/sala/temp", 27)
+    z["relogio"]["t"] = 100
+    m.enviar_nuvem()
+    url, corpo = z["nuvem"]["posts"][-1]
+    confere(url == m.NUVEM_URL and corpo["chave"] == "chave-de-teste", "url ou chave erradas")
+    confere(corpo["estado"]["casa/sala/temp"] == 27, "estado nao foi")
+    confere(corpo["modo"] == "viagem" and corpo["titulo"] == "MODO VIAGEM", "modo ou titulo errados")
+    confere(corpo["conectados"] == 1 and corpo["publicando"] == 1, "contagens erradas")
+    confere(corpo["lcd"] == ["MODO VIAGEM", "Monitorando"], "lcd: {}".format(corpo["lcd"]))
+
+
+def nuvem_respeita_intervalo_e_pulso():
+    z = central_com_chave()
+    m = z["m"]
+    posts = z["nuvem"]["posts"]
+    z["relogio"]["t"] = 100
+    m.enviar_nuvem()
+    m.ao_responder_nuvem(200, "{}")
+    publicacao(m, "casa/sala/temp", 27)
+    z["relogio"]["t"] = 100 + m.NUVEM_INTERVALO - 1
+    m.enviar_nuvem()
+    confere(len(posts) == 1, "enviou antes do intervalo")
+    z["relogio"]["t"] = 100 + m.NUVEM_INTERVALO
+    m.enviar_nuvem()
+    confere(len(posts) == 2, "nao enviou a mudanca")
+    m.ao_responder_nuvem(200, "{}")
+    enviado_em = z["relogio"]["t"]
+    z["relogio"]["t"] = enviado_em + m.NUVEM_INTERVALO
+    m.enviar_nuvem()
+    confere(len(posts) == 2, "reenviou sem mudanca")
+    z["relogio"]["t"] = enviado_em + m.NUVEM_PULSO
+    m.enviar_nuvem()
+    confere(len(posts) == 3, "sem o pulso, o site acharia que o simulador desligou")
+
+
+def nuvem_nao_empilha_nem_prende():
+    z = central_com_chave()
+    m = z["m"]
+    posts = z["nuvem"]["posts"]
+    z["relogio"]["t"] = 100
+    m.enviar_nuvem()
+    z["relogio"]["t"] = 100 + m.NUVEM_ESPERA - 1
+    publicacao(m, "casa/sala/temp", 27)
+    m.enviar_nuvem()
+    confere(len(posts) == 1, "empilhou envio sem resposta")
+    z["relogio"]["t"] = 100 + m.NUVEM_ESPERA + 1
+    m.enviar_nuvem()
+    confere(len(posts) == 2, "ficou preso sem resposta")
+    confere(z["nuvem"]["criados"] == 2, "nao trocou o cliente depois da falta de resposta")
+
+
+def nuvem_falha_nao_derruba_a_central():
+    z = central_com_chave()
+    m = z["m"]
+    z["nuvem"]["falhar"] = True
+    z["relogio"]["t"] = 100
+    m.enviar_nuvem()
+    z["relogio"]["t"] = 200
+    m.enviar_nuvem()
+    m.ao_responder_nuvem(500, "erro")
+    m.ao_responder_nuvem(500, "erro")
+    avisos = [x for x in z["logs"] if "Nuvem" in x and "falhou" in x]
+    confere(len(avisos) == 1, "repetiu o aviso: {}".format(avisos))
+    z["nuvem"]["falhar"] = False
+    z["relogio"]["t"] = 300
+    m.enviar_nuvem()
+    m.ao_responder_nuvem(200, "{}")
+    confere(any("Nuvem" in x and "ok" in x for x in z["logs"]), "nao registrou a volta")
+
+
 # --- Zonas: estado inicial e logs ------------------------------------------- #
 def cozinha_nasce_com_atuadores_desligados():
     z = carregar("zona_cozinha", {"Smoke": 0.0, "CO": 0.0})
@@ -305,6 +397,11 @@ for zona, saidas in (
     ("zona_perimetro", ("PORTA", "SIRENE", "CAMERA")),
 ):
     caso("{}: setup limpa sobras da execucao anterior".format(zona), setup_limpa_sobras(zona, saidas))
+caso("Central: sem chave nao toca na internet", sem_chave_nao_toca_na_internet)
+caso("Central: envia o resumo ao site", nuvem_envia_o_resumo)
+caso("Central: envio respeita intervalo e pulso", nuvem_respeita_intervalo_e_pulso)
+caso("Central: envio nao empilha nem prende", nuvem_nao_empilha_nem_prende)
+caso("Central: falha de rede nao derruba", nuvem_falha_nao_derruba_a_central)
 caso("Central: conexao nova sobrevive a limpeza", conexao_nova_sobrevive_a_limpeza)
 caso("Central: movimento na sala/quarto em viagem e intrusao", movimento_interno_em_viagem_e_intrusao)
 caso("Central: movimento na sala com gente em casa nao alarma", movimento_interno_em_casa_nao_alarma)

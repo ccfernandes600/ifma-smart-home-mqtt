@@ -172,10 +172,10 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 |---|---|---|
 | D0 | Temperature | `analogRead` |
 | D1 | Humidity | `analogRead` |
-| D2 | Fire Sprinkler | `digitalWrite` — não confirmado |
-| D3 | Window | `customWrite` — não confirmado |
-| D4 | Fan | `customWrite` (confirmado) |
-| D5 | Alarm | `digitalWrite` (confirmado) |
+| D2 | Fire Sprinkler | `digitalWrite` |
+| D3 | Window | `customWrite "0"/"1"` |
+| D4 | Fan | `customWrite` |
+| D5 | Alarm | `digitalWrite` |
 | D6–D9 | *(livres)* | — |
 
 > ✅ **Aplicada direto a lição da Garagem (03/07/2026):** Smoke Detector e CO Detector **não entram no GPIO** — mesma família de Smart Thing sem `Direct/Local Control`. `zona_cozinha.py` lê os dois via `environment`: `Environment.get("CO")` (confirmado) e `Environment.get("Smoke")` (**confirmado** no PT 9.0.1.0858 em 21/09/2026; a doc do Old Car lista fumaça como um dos tipos de emissão ao lado de CO/CO₂). Perigo (fumaça OU CO ≥ 20%) aciona Sprinkler + Window + Fan + Alarm juntos, independente de `modo_viagem` (incêndio importa com ou sem gente em casa).

@@ -46,6 +46,7 @@ número de dispositivos IoT.
 - [x] **Segurança:** fumaça e CO disparam os atuadores; o alerta passa na frente do aviso de cartão
 - [x] **Reconexão:** a zona que sobe antes da Central, ou perde a Central, volta sozinha
 - [x] **Clima de São Luís** gravado no `.pkt`: o ambiente acompanha a curva, e o AC liga no horário previsto
+- [x] **Casa ao vivo no site público:** a Central envia o estado por `RealHTTPClient`, com o simulador aberto e numa cópia com chave
 - [x] Abrir o `.pkt` na versão Linux do Packet Tracer 9.0.1 (no WSL): `conectados: 7 · publicando: 6`, sem Stop → Run
 - [ ] Testar o `.pkt` em outra máquina, com outro perfil
 - [ ] Umidificador: sem acionamento real, porque o perfil de São Luís não desce de 62 % de umidade
@@ -142,6 +143,15 @@ def reconectar():
 ```
 
 Com isso, os 7 nós conectaram em 6 s depois de a Central subir, e voltaram em 3 s quando ela reiniciou.
+
+### O simulador consegue falar com a internet
+
+**Descoberta (04/11/2026):** a rede simulada não é acessível de fora, mas um script no SBC pode sair: `RealHTTPClient` faz GET e POST
+reais por HTTPS. O callback de `onDone` recebe `(status, corpo)`.
+
+> [!IMPORTANT]
+> O simulador pede autorização na janela `External Network Access`. Com `Yes`, ela volta a cada requisição; com `Yes to All`, vale para o
+> arquivo aberto, até a próxima abertura. Enquanto ela estiver aberta, o script não recebe resposta.
 
 ### Cada contêiner tem o seu clima, e reinstalar o simulador desfaz o padrão
 

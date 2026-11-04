@@ -1,22 +1,24 @@
 # Retomar o V4
 
-## Retomar aqui — site com a casa ao vivo (04/11/2026)
+## Casa ao vivo (04/11/2026)
 
-O V4 está finalizado e testado; o `.pkt` validado é o do git. O site público está em
-https://ifma-smart-home-mqtt.netlify.app, e a função `/api/estado` já recebe dados do simulador.
+O V4 está finalizado e testado, e o site público está em https://ifma-smart-home-mqtt.netlify.app.
 
-**Próximos passos, ainda a confirmar com o Claudio** (a recomendação é enviar pela Central, sem SBC Ponte):
+**Como funciona:** com `NUVEM_CHAVE` preenchida, a Central envia por `RealHTTPClient` o estado, o LCD, o modo e as contagens à
+função `/api/estado`, a cada 10 s quando algo muda, e a cada 60 s no mínimo. O site consulta a cada 10 s e mostra
+`Simulador desligado` depois de 150 s sem dados.
 
-1. Na Central: constante de chave vazia por padrão (vazia = não envia e não abre o aviso de permissão), rota com
-   estado, modo, situação e conexões, e envio por `RealHTTPClient` a cada 10 s, só quando o estado mudar. Com teste.
-2. A função precisa aceitar também modo, situação e conexões; hoje só guarda os tópicos numéricos.
-3. No site: seção "Casa ao vivo", com faixa, tabelas por zona e `Simulador desligado` sem dados recentes.
-4. Colar a Central com a chave numa cópia pessoal do `.pkt`, fora do git. O `.pkt` da turma e o do git ficam sem chave.
-5. Testar junto: acionar um sensor no PT e ver o site mudar. Repetir a conferência dos 7 nós.
+**Dois arquivos, de propósito:**
 
-**A descobrir:** se o aviso `External Network Access` volta a cada abertura do arquivo.
-**Chave:** `~/.cache/pt-operacao/chave_estado.txt` e `ESTADO_CHAVE` no Netlify. Nunca no git.
+- `src/IFMA-MQTT.pkt`: oficial, no git, sem chave. Não toca na internet nem abre aviso de rede. Conferido ao reabrir.
+- `src/IFMA-MQTT_ao-vivo.pkt`: cópia pessoal, fora do git. A chave está nela, em `~/.cache/pt-operacao/chave_estado.txt` e
+  em `ESTADO_CHAVE` no Netlify. Se ela vazar, troque a variável no Netlify e cole a Central de novo.
 
+**Para demonstrar:** abra a cópia ao vivo e clique em **`Yes to All`** no aviso `External Network Access`. Ele volta a cada
+abertura e, com `Yes` simples, a cada envio. Enquanto o aviso estiver aberto, nada é enviado.
+
+**Medido:** Alt+clique no movimento da Sala, em modo viagem, chegou à API pública como `INTRUSAO NA SALA` em cerca de 6 s; o modo viagem
+levou ~20 s, somando o intervalo de envio e o cache de 5 s. O teste de falha de rede só foi feito com dublê.
 
 ## Bancada de 03/11/2026 — Blocos 0 a 7 concluídos
 

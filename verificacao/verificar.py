@@ -88,6 +88,7 @@ API_DOS_PACOTES = {
     "tcp": {"TCPClient", "TCPServer"},
     "json": {"dumps", "loads"},
     "http": {"HTTPServer"},
+    "realhttp": {"RealHTTPClient"},
     "environment": {"Environment"},
 }
 

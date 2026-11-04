@@ -85,8 +85,25 @@ def carregar(nome, ambiente=None):
     environment = types.ModuleType("environment")
     environment.Environment = Ambiente
 
+    nuvem = {"posts": [], "criados": 0, "falhar": False, "callback": None}
+
+    class ClienteReal:
+        def __init__(self):
+            nuvem["criados"] += 1
+
+        def onDone(self, funcao):
+            nuvem["callback"] = funcao
+
+        def post(self, url, dado):
+            if nuvem["falhar"]:
+                raise OSError("sem rede")
+            nuvem["posts"].append((url, _json.loads(dado)))
+
+    realhttp = types.ModuleType("realhttp")
+    realhttp.RealHTTPClient = ClienteReal
+
     guardados = {}
-    for dublado in (gpio, tempo, tcp, js, http, environment):
+    for dublado in (gpio, tempo, tcp, js, http, environment, realhttp):
         guardados[dublado.__name__] = sys.modules.get(dublado.__name__)
         sys.modules[dublado.__name__] = dublado
     try:
@@ -112,6 +129,7 @@ def carregar(nome, ambiente=None):
         "env": env,
         "logs": logs,
         "Cliente": Cliente,
+        "nuvem": nuvem,
     }
 
 

@@ -28,13 +28,9 @@
 # Temperatura/Umidade sao so informativas aqui (nao ha climatizacao
 # na Cozinha no design atual) -- publicadas, sem acionar nada sozinhas.
 #
-# ATENCAO -- NAO CONFIRMADO no PT ainda:
-#   - Fire Sprinkler: assumido digitalWrite (binario), por analogia a
-#     outros sprinklers do catalogo -- poderia ser Custom como o Fan.
-#   - Window: assumido customWrite "1"/"0", por analogia a Door/Garage
-#     Door (mesma familia "abre/fecha").
-#   - Fan e Alarm: JA CONFIRMADOS em outras zonas (mesmo tipo de device
-#     em todo o projeto) -- customWrite e digitalWrite respectivamente.
+# CONFIRMADO em 03/11/2026, na doc do device e na bancada: Floor Sprinkler com
+# digitalWrite e Window com customWrite "1"/"0". Com fumaca a 30%, os dois
+# acionaram junto com o alarme, e o setup desligou tudo no Run seguinte.
 # =====================================================================
 
 from gpio import *
@@ -51,8 +47,8 @@ BROKER_PORT = 1883
 TEMP = 0  # D0: Temperature   (analogRead 0-1023)
 UMID = 1  # D1: Humidity      (analogRead 0-1023)
 # --- Saidas ---
-SPRINKLER = 2  # D2: Fire Sprinkler (digitalWrite -- NAO CONFIRMADO)
-JANELA = 3  # D3: Window          (customWrite -- NAO CONFIRMADO)
+SPRINKLER = 2  # D2: Fire Sprinkler (digitalWrite -- confirmado em 03/11/2026)
+JANELA = 3  # D3: Window          (customWrite -- confirmado em 03/11/2026)
 FAN = 4  # D4: Fan              (customWrite "0"/"1"/"2" -- confirmado)
 ALARME = 5  # D5: Alarm            (digitalWrite -- confirmado)
 # D6-D9 livres (Smoke/CO nao ocupam porta -- lidos via environment)
