@@ -61,6 +61,17 @@ def log(msg):
     print("[{}] {}".format(ctime(), msg))
 
 
+def reconectar():
+    """Cada tentativa precisa de um TCPClient novo: no PT, repetir connect()
+    no mesmo objeto nunca conecta, mesmo com a Central ja no ar (medido em
+    03/11/2026). Sem isto, a zona que sobe antes da Central fica muda."""
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.onReceive(ao_receber)
+    cliente.connect(BROKER_IP, BROKER_PORT)
+
+
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
     Backport do padrao validado no RFID Reader / zona_sala.py."""
@@ -79,7 +90,7 @@ def manter_conexao():
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0
         log("Reconectando ao broker {}...".format(BROKER_IP))
-        cliente.connect(BROKER_IP, BROKER_PORT)
+        reconectar()
 
 
 def publicar(grandeza, valor):
@@ -213,6 +224,10 @@ def setup():
     pinMode(CAMPAINHA, IN)
     for p in [PORTA, SIRENE, CAMERA]:
         pinMode(p, OUT)
+
+    # A saida de um pino sobrevive ao Stop: sem isto, a porta deixada aberta
+    # numa execucao anterior nunca fecharia.
+    customWrite(PORTA, "0")
 
     cliente.onReceive(ao_receber)
     cliente.connect(BROKER_IP, BROKER_PORT)

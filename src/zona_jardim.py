@@ -27,7 +27,6 @@
 #
 # Lawn Sprinkler e Water Drain: customWrite "1"/"0". Light: customWrite
 # "0" (off), "1" (dim), "2" (on). Doc de cada device, lida em 03/11/2026.
-# LIMIARES DE LUZ EM RAW -- CALIBRAR com leituras reais no PT.
 #
 # MODO VIAGEM: esta zona ignora o broadcast casa/todas/cmd/modo de
 # proposito. Planta nao viaja: a irrigacao depende do nivel de agua,
@@ -60,7 +59,9 @@ NIVEL_BOM = 30  # irrigacao desliga ao atingir (histerese da irrigacao)
 NIVEL_ALAGADO = 80  # acima daqui: liga o dreno
 NIVEL_OK = 65  # dreno desliga ao descer ate aqui (histerese do dreno)
 
-# Luminaria (raw do Photo Sensor) -- CALIBRAR
+# Luminaria (raw do Photo Sensor)
+# Medido em 03/11/2026: o Photo Sensor e quase binario (0 ou 1023), com a
+# virada perto das 17h45 simuladas. Por isso estes limiares nao sao criticos.
 LIM_ESCURO = 200  # abaixo: acende
 LIM_CLARO = 300  # acima: apaga (histerese pro lusco-fusco)
 
@@ -99,6 +100,17 @@ def publicar_se_mudou(grandeza, valor):
             anterior[grandeza] = valor
 
 
+def reconectar():
+    """Cada tentativa precisa de um TCPClient novo: no PT, repetir connect()
+    no mesmo objeto nunca conecta, mesmo com a Central ja no ar (medido em
+    03/11/2026). Sem isto, a zona que sobe antes da Central fica muda."""
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.onReceive(ao_receber)
+    cliente.connect(BROKER_IP, BROKER_PORT)
+
+
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (padrao validado)."""
     global _loops_sem_conexao, _republicar
@@ -116,7 +128,7 @@ def manter_conexao():
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s
         _loops_sem_conexao = 0
         log("Reconectando ao broker {}...".format(BROKER_IP))
-        cliente.connect(BROKER_IP, BROKER_PORT)
+        reconectar()
 
 
 def quantizar(valor):

@@ -101,12 +101,21 @@ def publicar_se_mudou(grandeza, valor):
             anterior[grandeza] = valor
 
 
+def reconectar():
+    """Cada tentativa precisa de um TCPClient novo: no PT, repetir connect()
+    no mesmo objeto nunca conecta, mesmo com a Central ja no ar (medido em
+    03/11/2026). Sem isto, a zona que sobe antes da Central fica muda."""
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.onReceive(ao_receber)
+    cliente.connect(BROKER_IP, BROKER_PORT)
+
+
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
-    ATENCAO -- na bancada de 21/09 isto NAO cobriu o reinicio da Central:
-    o objeto cliente seguiu reportando connected() com o servidor fora do
-    ar (conexao fantasma) e a zona ficou muda. Regra operacional enquanto
-    nao houver heartbeat: recolou a Central, reinicie as zonas."""
+    Com o TCPClient novo de reconectar(), a zona volta sozinha quando a
+    Central reinicia (medido em 03/11/2026, 7 nos em 3 s)."""
     global _loops_sem_conexao, _republicar
     if cliente.connected():
         _loops_sem_conexao = 0
@@ -122,7 +131,7 @@ def manter_conexao():
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s (3 loops de 2s)
         _loops_sem_conexao = 0
         log("Reconectando ao broker {}...".format(BROKER_IP))
-        cliente.connect(BROKER_IP, BROKER_PORT)
+        reconectar()
 
 
 def rgb(r, g, b):

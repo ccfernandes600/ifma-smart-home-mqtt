@@ -311,8 +311,6 @@ porque a rampa pode ter alcançado a curva antes do fim.
 Não é defeito, e não adianta reimportar achando que falhou. Se precisar do ambiente quente logo no
 começo de uma aula, importe antes e deixe rodando enquanto a turma chega.
 
-**Os limiares de luz ainda não estão calibrados** — estão marcados como `CALIBRAR no PT` no código.
-O valor 200 equivale a ~20 % da escala **se** o PT mapear luminosidade linearmente em 0–1023, o que
-não foi verificado. Ao rodar um dia completo, anote o `raw` do Photo Sensor no instante em que a
-luminária deveria acender e use esse número medido — trocando o comentário pelo valor e pela data.
-Limiar calibrado sem registro volta a ser chute na revisão seguinte.
+**Os limiares de luz estão resolvidos:** medido em 03/11/2026, o Photo Sensor lê praticamente só 0 ou 1023, com a virada
+perto das 17h45 simuladas. Qualquer limiar entre os extremos funciona. Ao acender, a luminária do Jardim pode
+iluminar o próprio sensor e piscar uma vez, por poucos segundos.

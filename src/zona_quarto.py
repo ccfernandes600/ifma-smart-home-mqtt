@@ -51,7 +51,9 @@ UMID_OK = 50.0  # so desliga ao recuperar este nivel
 
 # Luz de presenca
 BRILHO_LED = 1023  # brilho total do Smart LED
-LIM_ESCURO = 200  # raw 0-1023 do Photo Sensor -- CALIBRAR no PT
+# Medido em 03/11/2026: o Photo Sensor e quase binario (0 ou 1023), com a
+# virada perto das 17h45 simuladas. Por isso estes limiares nao sao criticos.
+LIM_ESCURO = 200  # raw 0-1023 do Photo Sensor
 DURACAO_MOVIMENTO = 10  # segundos que "movimento" fica reportado ativo
 
 PASSO_PUBLICACAO = 10  # quantizacao da luz (raw) antes de publicar
@@ -91,6 +93,17 @@ def publicar_se_mudou(grandeza, valor):
             anterior[grandeza] = valor
 
 
+def reconectar():
+    """Cada tentativa precisa de um TCPClient novo: no PT, repetir connect()
+    no mesmo objeto nunca conecta, mesmo com a Central ja no ar (medido em
+    03/11/2026). Sem isto, a zona que sobe antes da Central fica muda."""
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.onReceive(ao_receber)
+    cliente.connect(BROKER_IP, BROKER_PORT)
+
+
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (padrao validado)."""
     global _loops_sem_conexao, _republicar
@@ -108,7 +121,7 @@ def manter_conexao():
     if _loops_sem_conexao >= 3:  # tenta reconectar a cada ~6s
         _loops_sem_conexao = 0
         log("Reconectando ao broker {}...".format(BROKER_IP))
-        cliente.connect(BROKER_IP, BROKER_PORT)
+        reconectar()
 
 
 def quantizar(valor):
@@ -275,6 +288,7 @@ def setup():
     # A luz so e escrita na transicao: sem isto, uma sobra da execucao
     # anterior ficaria acesa, porque _led_aceso nasce False.
     analogWrite(LED, 0)
+    customWrite(JANELA, "0")  # idem: a janela so se move por comando
     cliente.onReceive(ao_receber)
     cliente.connect(BROKER_IP, BROKER_PORT)
     log("Quarto conectando ao broker {}".format(BROKER_IP))

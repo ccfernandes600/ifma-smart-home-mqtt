@@ -73,8 +73,8 @@ Pare a Central antes de começar. Rode **uma zona por vez**.
 - Nível de água abaixo de **15 cm** → irrigação liga. Acima de **30 cm** → desliga.
 - Acima de **80 cm** → dreno liga. Abaixo de **65 cm** → desliga.
 - Photo abaixo de **200** → luminária acende; acima de **300** → apaga.
-- Detalhe do simulador que vale observar: o próprio Lawn Sprinkler eleva o nível de água do
-  ambiente, então a malha fecha sozinha — irrigar faz o nível subir de verdade.
+- Detalhe do simulador: o Lawn Sprinkler soma um valor fixo ao nível (de 12 para 15 cm, medido em 03/11), sem
+  acumular. No perfil seco, a irrigação fica ligada direto: a malha não fecha sozinha nesta escala.
 
 ### 2.5 Garagem — 192.168.1.26 (MCU)
 - **Primeiro olhe o arranque:** se houver erro de import, o problema é o pacote `environment` na
@@ -147,15 +147,11 @@ Já tentado:    reiniciei o script; conferi que a janela está em D3
 
 ## Quatro regras operacionais que já custaram tempo
 
-1. **Zona que rodou com a Central fora do ar precisa de Stop → Run depois que a Central subir.**
-   Não importa quem caiu primeiro. Enquanto a Central está parada, as tentativas de `connect()`
-   deixam o objeto cliente reportando conexão; quando a Central sobe de verdade, o
-   `manter_conexao()` não tenta de novo porque acha que já está dentro.
-   **Sintoma que engana:** a zona funciona — sensores, atuadores, log — e não emite nenhum
-   `AVISO: sem conexao`, porque `connected()` mente. O que morre é só a rede, nos dois sentidos:
-   nada chega na Central e nenhum broadcast de modo chega na zona.
-   **Como confirmar em 5 segundos:** aperte o botão de modo da Central. Se a zona não logar
-   `Modo viagem = ...`, é conexão fantasma. (Medido na bancada de 23/09, no Perímetro.)
+1. **A zona que sobe antes da Central conecta sozinha, e reconecta se a Central reiniciar.** Até 03/11 isso exigia
+   Stop → Run, porque repetir `connect()` no mesmo `TCPClient` nunca conecta. Agora cada tentativa cria um cliente
+   novo (`reconectar()`). Medido: 7 nós conectados em 6 s depois de a Central subir, e em 3 s depois de ela reiniciar.
+   **Se uma zona ficar muda,** aperte o botão de modo da Central: sem `Modo viagem = ...` no log, ela não está
+   conectada. Registre, porque não deveria mais acontecer.
 2. **Editar o arquivo no repositório não muda o simulador.** O script roda a partir da cópia
    colada dentro do nó.
 3. **Reinicie o Packet Tracer de tempos em tempos numa bancada longa.** Ele degrada com o

@@ -35,27 +35,24 @@ número de dispositivos IoT.
 
 ## 📊 Status do Projeto
 
-**Fase atual:** Código fechado — o que falta depende da bancada no simulador
+**Fase atual:** V4 validado no simulador em 03/11/2026 (Packet Tracer 9.0.1.0858)
 
-- [x] Clonagem e análise do projeto V3 (referência)
-- [x] Pesquisa de dispositivos IoT compatíveis com SBC-PT + Python
-- [x] Documentação da Python API do Packet Tracer
-- [x] Definição final das zonas e dispositivos (6 zonas + central)
-- [x] Definição da arquitetura MQTT (Opção B: pub/sub sobre TCP+JSON)
-- [x] Mapa de portas e endereçamento IP ([ARQUITETURA.md](docs/ARQUITETURA.md))
-- [x] Confirmar suporte a `tcp` na MCU-PT — **confirmado** (02/07/2026): a Garagem conectou ao
-      broker
-- [x] Desenvolvimento dos scripts Python (SBCs + MCU) — 8 scripts em `src/`: broker central, 6
-      zonas e o publicador do RFID Reader
-- [ ] Validar no simulador a zona que nunca rodou: o jardim (cozinha e quarto já publicaram no
-      painel em 21/09)
-- [x] **Painel web servido pela própria Central** (`HTTPServer` :80) — rota `/` com tabela por
-      zona e `/estado` com JSON bruto; **validado no simulador em 21/09** (build 9.0.1.0858)
-- [x] **Modo viagem fechado:** Sala, Quarto, Perímetro e Garagem reagem; Cozinha e Jardim
-      ignoram por decisão registrada
-- [ ] Abrir o painel no PC0 com as seis zonas publicando — é o teste que fecha o projeto
-- [ ] Montagem da topologia no Packet Tracer
-- [ ] Documentação final
+- [x] Arquitetura pub/sub sobre TCP+JSON, com broker na Central e 6 zonas
+- [x] 8 scripts em `src/`: broker central, 6 zonas e o publicador do RFID Reader
+- [x] **Painel web servido pela própria Central:** `conectados: 7 · publicando: 6`, seis tabelas e `/estado`
+- [x] **Modo viagem:** intrusão em Sala, Quarto e Garagem, no LCD e no painel; Cozinha e Jardim ignoram por decisão
+- [x] **Segurança:** fumaça e CO disparam os atuadores; o alerta passa na frente do aviso de cartão
+- [x] **Reconexão:** a zona que sobe antes da Central, ou perde a Central, volta sozinha
+- [x] **Clima de São Luís** gravado no `.pkt`: o ambiente acompanha a curva, e o AC liga no horário previsto
+- [ ] Testar o `.pkt` em outra máquina
+- [ ] Umidificador: sem acionamento real, porque o perfil de São Luís não desce de 62 % de umidade
+
+**Fora desta versão (V4.1):** alarme por e-mail, botões no painel e vitrine com MQTT real. Detalhes de cada medição em
+[docs/RETOMAR.md](docs/RETOMAR.md).
+
+> [!WARNING]
+> **O Packet Tracer consome cada vez mais memória com este arquivo aberto** (64 a 100 MB/min, mesmo sem script rodando).
+> Feche o programa a cada 45 minutos. Depois de abrir o arquivo, espere uns 12 minutos antes de confiar na temperatura.
 
 ## ⚖️ Comparativo V3 → V4
 
@@ -102,6 +99,54 @@ flowchart TB
 Durante a montagem no Packet Tracer 9.0.0, encontramos comportamentos do simulador que não
 estavam documentados de forma clara e que mudaram decisões de arquitetura. Registramos aqui o
 porquê de cada uma, para quem for reproduzir o projeto não perder tempo com os mesmos impasses.
+
+### O simulador não avisa quando a API está errada
+
+> [!WARNING]
+> Chamar a função errada num dispositivo do Packet Tracer não dá erro: o script segue, o log diz "ligou", e nada
+> acontece. Antes de programar um dispositivo, leia as seções `Local Control` e `Data Specifications` na aba
+> Specifications dele.
+
+**Descoberta (03/11/2026):** o Jardim registrava `Irrigacao: LIGOU`, mas o sprinkler nunca jorrava. Com 42 cm de água no
+ambiente, o sensor de nível lia 0.
+
+**Causa:** eram duas suposições erradas, feitas a partir do catálogo e não da documentação de cada dispositivo:
+
+| Dispositivo | O script supunha | A documentação do dispositivo diz |
+|---|---|---|
+| Lawn Sprinkler, Water Drain | `digitalWrite` | `customWrite` com `"0"`/`"1"` |
+| Light | `digitalWrite` | `customWrite` com `"0"`, `"1"` (meia-luz) e `"2"` |
+| Smart LED | `digitalWrite` | `analogWrite` |
+| Water Level Monitor, Wind Sensor | `analogRead` | `Direct Control: N/A`: lê o ambiente, sem GPIO |
+
+**Solução:** cada atuador usa a API da sua documentação, e o nível de água vem de `Environment.get("Water Level")`.
+O verificador agora rejeita a API errada, para o erro não voltar.
+
+### Repetir `connect()` no mesmo cliente TCP nunca conecta
+
+**Descoberta (03/11/2026):** ao abrir o `.pkt`, as zonas sobem antes da Central. A primeira tentativa falha e o log repete
+`Reconectando ao broker...` para sempre, mesmo com a Central já no ar. Só Stop → Run resolvia.
+
+**Solução:** criar um `TCPClient` novo a cada tentativa:
+
+```python
+def reconectar():
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.onReceive(ao_receber)
+    cliente.connect(BROKER_IP, BROKER_PORT)
+```
+
+Com isso, os 7 nós conectaram em 6 s depois de a Central subir, e voltaram em 3 s quando ela reiniciou.
+
+### Cada contêiner tem o seu clima, e reinstalar o simulador desfaz o padrão
+
+**Descoberta (03/11/2026):** depois de reinstalar o Packet Tracer, a casa marcava 2 °C, porque o contêiner rodava o clima de
+fábrica. O ambiente sobe até a curva no máximo a 5 °C por hora simulada, cerca de 2,5 °C por minuto real.
+
+**Solução:** importar o clima no contêiner que tem os dispositivos e salvar: o `.pkt` guarda o ambiente. O
+passo a passo está em [simulacao/README.md](simulacao/README.md).
 
 ### CO Detector e CO₂ Detector aparecem na topologia, mas ficam decorativos
 

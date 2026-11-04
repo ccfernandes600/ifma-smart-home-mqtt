@@ -246,10 +246,9 @@ O `manter_conexao()` de cada zona só dispara quando `cliente.connected()` retor
 objeto cliente pode continuar reportando conexão depois que o servidor caiu. Resultado: a Central
 fica ouvindo sem ninguém, e o painel abre com "conectados: 0".
 
-Regra: **recolou o `broker_central.py`, reinicie as zonas.** Uma alternativa de código, se isso
-incomodar em aula, é um heartbeat — a Central retransmitindo o modo a cada 30 s e cada zona
-forçando reconexão se ficar 90 s sem receber nada. Custa código nos sete scripts e ainda não foi
-implementado.
+**Resolvido em 03/11/2026, sem heartbeat:** cada tentativa de reconexão cria um `TCPClient` novo (`reconectar()`),
+porque repetir `connect()` no mesmo objeto nunca conecta. Medido: reiniciada a Central, os 7 nós voltaram em 3 s. Do lado
+da Central, uma conexão só sai da lista depois de dois ciclos seguidos sem `connected()`.
 
 ---
 

@@ -100,6 +100,62 @@ def reconexao_republica(nome):
     return teste
 
 
+def reconexao_usa_cliente_novo(nome):
+    """No PT, repetir connect() no mesmo TCPClient nunca conecta (medido em 03/11)."""
+    def teste():
+        z = carregar(nome, {"CO": 0.0, "CO2": 0.0, "Smoke": 0.0})
+        m = z["m"]
+        antes = m.cliente
+        z["rede"]["conectado"] = False
+        for _ in range(3):
+            m.manter_conexao()
+        confere(z["rede"]["tentativas"] == 1, "nao tentou reconectar")
+        confere(m.cliente is not antes, "reconectou com o mesmo TCPClient")
+        confere(z["rede"].get("fechados") == 1, "nao fechou a tentativa anterior")
+
+    return teste
+
+
+def conexao_nova_sobrevive_a_limpeza():
+    """Conexao recem-aceita pode dar connected() falso no 1o ciclo (medido em 03/11)."""
+    z = carregar("broker_central")
+    m = z["m"]
+    m.clientes.append(z["Cliente"]())
+    z["rede"]["conectado"] = False
+    m.limpar_clientes()
+    confere(len(m.clientes) == 1, "removeu a conexao no primeiro ciclo")
+    z["rede"]["conectado"] = True
+    m.limpar_clientes()
+    z["rede"]["conectado"] = False
+    m.limpar_clientes()
+    confere(len(m.clientes) == 1, "voltou a ficar conectada: precisava de novos 2 ciclos")
+    m.limpar_clientes()
+    confere(len(m.clientes) == 0, "conexao morta ficou na lista")
+
+
+def setup_limpa_sobras(nome, saidas):
+    """A saida de um pino sobrevive ao Stop (medido em 03/11): o setup e o 1o ciclo
+    precisam deixar tudo em estado conhecido, com o ambiente em condicao normal."""
+    def teste():
+        z = carregar(nome, {"Water Level": 40.0})
+        m = z["m"]
+        z["entradas"][getattr(m, "TEMP", 0)] = TEMP_AMENA
+        if hasattr(m, "UMID"):
+            z["entradas"][m.UMID] = 600
+        if hasattr(m, "LUZ"):
+            z["entradas"][m.LUZ] = 1023
+        for s in saidas:
+            z["saidas"][getattr(m, s)] = m.HIGH  # sobra de uma execução anterior
+        m.setup()
+        for ciclo in ("processar_sensores", "verificar_perigo", "processar_ambiente"):
+            if hasattr(m, ciclo):
+                getattr(m, ciclo)()
+        presas = [s for s in saidas if z["saidas"][getattr(m, s)] not in (m.LOW, "0", 0)]
+        confere(not presas, "ficaram ligadas: {}".format(presas))
+
+    return teste
+
+
 # --- Central: situação da casa ---------------------------------------------- #
 def movimento_interno_em_viagem_e_intrusao():
     for topico, onde in (("casa/sala/movimento", "Na sala"), ("casa/quarto/movimento", "No quarto")):
@@ -238,6 +294,18 @@ for zona in ("zona_garagem", "zona_sala", "zona_quarto", "zona_perimetro"):
     caso("{}: movimento perdido e reenviado".format(zona), movimento_perdido_e_reenviado(zona))
 for zona in ("zona_sala", "zona_cozinha", "zona_quarto", "zona_jardim", "zona_garagem", "zona_perimetro"):
     caso("{}: reconexao volta a publicar o estado".format(zona), reconexao_republica(zona))
+for zona in ("zona_sala", "zona_cozinha", "zona_quarto", "zona_jardim", "zona_garagem", "zona_perimetro"):
+    caso("{}: reconexao usa um TCPClient novo".format(zona), reconexao_usa_cliente_novo(zona))
+for zona, saidas in (
+    ("zona_sala", ("AC", "FAN")),
+    ("zona_quarto", ("AC", "UMIDIFICADOR", "LED", "JANELA")),
+    ("zona_cozinha", ("SPRINKLER", "JANELA", "FAN", "ALARME")),
+    ("zona_jardim", ("IRRIGACAO", "DRENO")),
+    ("zona_garagem", ("PORTA", "FAN", "ALARME")),
+    ("zona_perimetro", ("PORTA", "SIRENE", "CAMERA")),
+):
+    caso("{}: setup limpa sobras da execucao anterior".format(zona), setup_limpa_sobras(zona, saidas))
+caso("Central: conexao nova sobrevive a limpeza", conexao_nova_sobrevive_a_limpeza)
 caso("Central: movimento na sala/quarto em viagem e intrusao", movimento_interno_em_viagem_e_intrusao)
 caso("Central: movimento na sala com gente em casa nao alarma", movimento_interno_em_casa_nao_alarma)
 caso("Central: intrusao aciona o Speaker", intrusao_aciona_speaker)

@@ -1,8 +1,8 @@
 # Retomar o V4
 
-## Bancada de 03/11/2026 — Blocos 0 a 4 fechados, Bloco 5 em andamento
+## Bancada de 03/11/2026 — Blocos 0 a 7 concluídos
 
-Build 9.0.1.0858. **Próximo: terminar o Bloco 5.** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
+Build 9.0.1.0858. **Próximo: Bloco 8 (fechamento).** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
 sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do editor: igual ao `src/`.
 
 - **Rede:** 7 nós conectados na Central, com os IPs certos (.21 a .26 e .33); nenhum `Mensagem descartada`
@@ -62,22 +62,32 @@ explicam. **Regra de bancada:** sessões de até 45 min e fechar o PT entre elas
 
 Ao abrir o `.pkt`, o ambiente estava de novo em 12,9 °C: a queda inicial é reproduzível.
 
-**Bloco 5 em andamento:**
+**Blocos 5, 6 e 7 — resultado:**
 
-- **Jardim corrigido e comprovado.** Com 42 cm de água, `analogRead` lia 0: Water Level e Wind não têm GPIO, e a
-  pressão também lia 0. Agora vêm do ambiente, em cm, km/h e kPa. Lawn Sprinkler, Water Drain e Light estavam com a API
-  errada e nunca funcionaram. Medido: dreno ligou com 87 cm, sprinkler jorra, luminária acende à noite.
-- **Quarto:** o Smart LED usava `digitalWrite`; corrigido para `analogWrite`. Medido: com movimento no escuro,
-  acendeu às 21:32:20 e apagou 13 s depois. Humidifier e Window ainda sem acionamento comprovado.
-- **Cozinha:** a fumaça a 30 % disparou `PERIGO`, com alarme, sprinkler e janela visíveis na planta, e `ALERTA DE GAS`
-  na Central. Falta ver o fan girando, e "normalizar" com a zona rodando.
-- **Doc dos devices conferida:** Fire Sprinkler, Alarm, AC e Humidifier com `digitalWrite`; Fan, Window, Door, Webcam e Garage
-  Door com `customWrite`; RGB LED com `analogWrite`. A Siren não foi aberta (já confirmada em 02/07).
-- **Faltam:** Garagem e Perímetro em regressão, Sala com movimento, e calibrar `LIM_ESCURO`/`LIM_CLARO` (o `raw` da luz
-  só foi visto em 0 e 1020).
-- Com contribuição, a água vai a perfil + taxa × 30; a umidade não respondeu. O umidificador segue sem teste real: o
-  perfil de São Luís não desce de 62 %.
-- O `.pkt` foi salvo às 21:33 com os 8 scripts atuais. Ao abrir, confira se todos rodam, porque ele guarda o estado.
+| Item | Medido em 03/11 |
+|---|---|
+| Conexão | Com a Central parada, os 7 nós rodando conectaram 6 s depois de ela subir; depois de reiniciar, em 3 s. Sem Stop → Run |
+| Jardim | Corrigidos sensores e atuadores: dreno liga com 87 cm, sprinkler jorra, luminária acende à noite |
+| Quarto | LED com `analogWrite` acende com movimento no escuro; janela abre e fecha |
+| Cozinha | `PERIGO` e `normalizado` com fumaça e com CO; alarme, sprinkler e janela visíveis |
+| Garagem | CO acima de 20 %: alarme, porta aberta e exaustor girando |
+| Modo normal | Movimento em Sala e Quarto não alerta; portão, Garagem e campainha aparecem no LCD e voltam |
+| Modo viagem | `INTRUSAO!` em Sala, Quarto e Garagem, no LCD e no painel; Sala, Quarto, Garagem e Perímetro recebem o modo, Cozinha e Jardim não |
+| Cartão | Válido abre e fecha; inválido não prende; gás passa na frente do `ACESSO OK` |
+| Porta sem Perímetro | `Comando nao entregue` a cada ~6 s; a porta fecha ao voltar |
+| Painel | `conectados: 7 · publicando: 6`, seis tabelas, `/estado` com os valores das zonas |
+
+**Conferência visual e lógica, mas sem prova direta:**
+
+- **Home Speaker:** nada no log nem na planta mostra o som; só o código e o teste de lógica.
+- **Umidificador:** a API está na doc do device, mas ele nunca ligou: o perfil não desce de 62 %, e a umidade não
+  responde à contribuição. O corte em modo viagem só tem teste de lógica.
+- **Old Car:** não acionei; a Garagem foi testada com CO injetado.
+
+**Medições novas:**
+
+- O sprinkler soma +3 cm fixos (12 → 15 cm), sem acumular. No perfil seco, a irrigação fica ligada direto.
+- O mostrador do Photo Sensor do Jardim exibe `FILE NOT FOUND`. É só a imagem; a leitura funciona.
 
 **Observado e ainda sem correção:**
 
@@ -205,9 +215,7 @@ verificação por tempo acusa zona viva como morta. Ele paga em três lugares:
 - painel honesto (`atualizado há Xs`, zona esmaecida quando envelhece) — hoje uma zona parada há dez
   minutos é idêntica a uma publicando agora;
 - checklist de saúde na Central, com critério em vez de chute;
-- **a conexão fantasma**: se a Central responder ao heartbeat, a zona passa a saber que o broker
-  morreu. Hoje ela não tem como descobrir, porque `connected()` mente — foi o que custou 40 min
-  nesta bancada.
+- **zona muda:** a zona que parar de ouvir a Central passaria a perceber, o que hoje depende do `connected()`.
 
 **2. Alarme por e-mail.** O pacote `email` existe no PT (§2.6 do levantamento): `EmailClient.setup()`,
 `.send()` e `onSend(callback)`, que confirma se o envio saiu — alarme que falha calado é pior que

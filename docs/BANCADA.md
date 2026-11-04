@@ -132,11 +132,8 @@ Water Level e Wind não têm GPIO, e a pressão leu 0: as três vêm de `Environ
 `Environment.setContribution(id, taxa, 1.0e6, True)` a cada segundo. O valor vai para perfil + taxa × 30, e taxa 0
 devolve ao perfil. Vale para `Smoke` e `Water Level`; em `Humidity` não teve efeito visível.
 
-**Calibre com valores medidos, anotando data e valor no comentário:**
-
-- `LIM_ESCURO` e `LIM_CLARO` (Quarto e Jardim): o `raw` do Photo Sensor ao anoitecer.
-- Na Cozinha e na Garagem, observe se o exaustor fica ligando e desligando perto de 20 %. Só nesse caso
-  entra histerese no gás.
+**Calibração:** o Photo Sensor lê quase só 0 ou 1023 (medido em 03/11/2026), então os limiares de luz não são críticos.
+Na Cozinha e na Garagem, observe se o exaustor fica ligando e desligando perto de 20 %. Só nesse caso entra histerese no gás.
 
 **Checkpoint:** cada zona aprovada nas camadas A e B, com a ficha de falha de quem não passou.
 
@@ -155,8 +152,8 @@ devolve ao perfil. Vale para `Smoke` e `Water Level`; em `Humidity` não teve ef
 | Porta sem Perímetro | Card 1005 e Stop no Perímetro antes de 5 s; depois Run | Log `Comando nao entregue` a cada 5 s; a porta fecha quando o Perímetro volta |
 | Umidificador em viagem | Forçar ar seco no Quarto + modo viagem | Fica desligado; volta ao sair do modo |
 
-> A porta sem Perímetro depende da conexão fantasma: se o Perímetro reconectar sem Stop → Run na
-> Central, registre o que aconteceu.
+> Na porta sem Perímetro, dê o Stop **depois** do `ACESSO OK`: antes dele, a porta nem abre. Medido em 03/11:
+> falhas a cada ~6 s e fechamento no mesmo segundo em que o Perímetro voltou.
 
 **Checkpoint:** a tabela inteira conferida no LCD, no painel e no terminal.
 

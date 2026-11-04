@@ -53,6 +53,9 @@ def carregar(nome, ambiente=None):
         def connect(self, *a):
             rede["tentativas"] += 1
 
+        def close(self):
+            rede["fechados"] = rede.get("fechados", 0) + 1
+
         def remoteIP(self):
             return self.ip
 

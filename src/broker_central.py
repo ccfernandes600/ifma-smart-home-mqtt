@@ -53,6 +53,7 @@ ATUALIZA_EM = 5  # segundos entre recargas automaticas da pagina
 # --- Estado global: ultimo valor recebido de cada topico ---
 estado = {}
 clientes = []
+_suspeitos = []  # conexoes que deram connected() falso no ciclo anterior
 modo_viagem = False
 
 LIMIAR_GAS = 20  # % -- mesmo limiar usado nas zonas (ver zona_garagem.py)
@@ -320,8 +321,21 @@ def limpar_clientes():
 
     Sem isso a lista so cresce: cada Run de uma zona abre uma conexao nova
     e a antiga fica ali, fazendo o painel anunciar mais zonas do que
-    existem de fato. Chamado a cada ciclo do main()."""
-    vivos = [c for c in clientes if c.connected()]
+    existem de fato. Chamado a cada ciclo do main().
+
+    So remove depois de dois ciclos seguidos sem conexao: uma conexao recem-
+    aceita pode dar connected() falso no primeiro (medido em 03/11/2026)."""
+    vivos = []
+    for c in clientes:
+        if c.connected():
+            if c in _suspeitos:
+                _suspeitos.remove(c)
+            vivos.append(c)
+        elif c in _suspeitos:
+            _suspeitos.remove(c)
+        else:
+            _suspeitos.append(c)
+            vivos.append(c)
     if len(vivos) != len(clientes):
         log("Conexoes encerradas removidas: {} -> {}".format(len(clientes), len(vivos)))
         clientes[:] = vivos

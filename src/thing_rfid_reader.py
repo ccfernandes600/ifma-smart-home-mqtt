@@ -53,6 +53,16 @@ def publicar(grandeza, valor):
     return False
 
 
+def reconectar():
+    """Cada tentativa precisa de um TCPClient novo: no PT, repetir connect()
+    no mesmo objeto nunca conecta, mesmo com a Central ja no ar (medido em
+    03/11/2026). Sem isto, a zona que sobe antes da Central fica muda."""
+    global cliente
+    cliente.close()
+    cliente = TCPClient()
+    cliente.connect(BROKER_IP, BROKER_PORT)
+
+
 def manter_conexao():
     """Reconecta ao broker se a conexao cair (ex.: broker reiniciado).
     Sem isso, reiniciar a Central mataria a conexao e o Reader ficaria
@@ -65,7 +75,7 @@ def manter_conexao():
     if _loops_sem_conexao >= 5:  # tenta reconectar a cada ~5s
         _loops_sem_conexao = 0
         print("Reconectando ao broker {}...".format(BROKER_IP))
-        cliente.connect(BROKER_IP, BROKER_PORT)
+        reconectar()
 
 
 def setup():
