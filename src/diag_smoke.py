@@ -12,8 +12,8 @@
 #
 # Como usar:
 #   1. Cole num SBC qualquer da topologia e Run.
-#   2. Leia a primeira rodada: o nome que imprimir um numero (mesmo 0.0)
-#      e o ID valido. O que falhar levanta excecao e aparece como FALHOU.
+#   2. Leia a primeira rodada: o nome que imprimir um numero >= 0 e o ID
+#      valido. O que devolver -1 nao existe e aparece como FALHOU.
 #   3. Se algum ID valer, o script passa a injetar fumaca nele para o
 #      valor sair do zero dentro da sessao (ver INJETAR abaixo).
 #
@@ -22,9 +22,12 @@
 # para concluir errado que a leitura nao funciona. O setContribution faz
 # o ambiente subir num ritmo que da para ver.
 #
-# A injecao segue o que o script embutido do Heating Element faz: taxa em
-# unidades POR SEGUNDO e chamada repetida a cada segundo, com o quarto
-# argumento True. NAO CONFIRMADO para fumaca: e o que a bancada vai medir.
+# A injecao segue o formato do script embutido do Heating Element: chamada
+# repetida a cada segundo, com o quarto argumento True.
+#
+# MEDIDO em 03/11/2026 (PT 9.0.1.0858, escala 1:30): a fumaca NAO acumula. Ela
+# estabiliza em taxa x 30, e por isso 0.25 ficou parada em 7.5%.
+# Um ID inexistente NAO levanta excecao: Environment.get() devolve -1.
 # =====================================================================
 
 from environment import *
@@ -36,7 +39,7 @@ CANDIDATOS = ["Smoke", "Smoke Detector", "smoke", "SMOKE", "Fire", "Fire Smoke"]
 CONTROLE = "CO"  # ja confirmado: serve para provar que o pacote responde
 
 INJETAR = True  # False = so le, nao mexe no ambiente
-TAXA = 0.25  # unidades POR SEGUNDO: cruza os 20% em cerca de 80 s
+TAXA = 1.0  # a fumaca estabiliza em taxa x 30: 1.0 da 30%, acima do limiar de 20%
 LIMITE_API = 1.0e6  # 3o argumento, com o mesmo valor do Heating Element
 TETO = 40.0  # % em que este script para de injetar
 INTERVALO = 1  # segundos entre ciclos (a contribuicao e renovada em cada um)
@@ -45,9 +48,12 @@ INTERVALO = 1  # segundos entre ciclos (a contribuicao e renovada em cada um)
 def ler(nome):
     """Tenta ler uma grandeza. Devolve (deu_certo, valor_ou_erro)."""
     try:
-        return True, Environment.get(nome)
+        valor = Environment.get(nome)
     except Exception as erro:
         return False, erro
+    if valor < 0:  # o PT devolve -1 para um ID que nao existe
+        return False, "ID inexistente ({})".format(valor)
+    return True, valor
 
 
 def descobrir_id():

@@ -1,8 +1,8 @@
 # Retomar o V4
 
-## Bancada de 03/11/2026 — Blocos 0 a 3 fechados
+## Bancada de 03/11/2026 — Blocos 0 a 4 fechados, Bloco 5 em andamento
 
-Build 9.0.1.0858. **Próximo: Bloco 4.** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
+Build 9.0.1.0858. **Próximo: terminar o Bloco 5.** O `.pkt` salvo já tem os 8 scripts novos e o clima de São Luís, ainda
 sem commit (Bloco 8). Cada colagem foi conferida copiando o texto de volta do editor: igual ao `src/`.
 
 - **Rede:** 7 nós conectados na Central, com os IPs certos (.21 a .26 e .33); nenhum `Mensagem descartada`
@@ -48,6 +48,36 @@ botões no painel e vitrine ficam para a V4.1.
 Reabrir o arquivo não devolve a memória: só fechar o PT. Causa não apurada; relógio, clima e scripts não a
 explicam. **Regra de bancada:** sessões de até 45 min e fechar o PT entre elas. O travamento de 18:31 foi com
 3,7 GB, então não há limite garantido.
+
+**Bloco 4 fechado:**
+
+1. **O TCP junta mensagens?** Não observado nesta carga: 71 mensagens em ~8 min, com 7 conexões, e nenhum
+   `Mensagem descartada`. É pouco tráfego (~9/min), então olhar de novo no Bloco 7.
+2. **A saída de um pino sobrevive ao Stop?** Sim: com a Cozinha parada, alarme, janela e sprinkler seguiram
+   acionados. No Run, com a fumaça limpa, o `setup` desligou tudo: a correção de 03/11 funciona.
+3. **A injeção de fumaça funciona?** Sim, com ressalvas medidas:
+   - Ela **não acumula**: estabiliza em taxa × 30 (0,25 → 7,5 %; 1,0 → 30 %).
+   - Ela **quase não sai sozinha**: 15 s depois do Stop, ainda 29,997 %. Uma contribuição negativa zera na hora.
+   - O ID `Smoke` é válido, e **um ID inexistente devolve −1, sem exceção** (o diagnóstico antigo dava falso positivo).
+
+Ao abrir o `.pkt`, o ambiente estava de novo em 12,9 °C: a queda inicial é reproduzível.
+
+**Bloco 5 em andamento:**
+
+- **Jardim corrigido e comprovado.** Com 42 cm de água, `analogRead` lia 0: Water Level e Wind não têm GPIO, e a
+  pressão também lia 0. Agora vêm do ambiente, em cm, km/h e kPa. Lawn Sprinkler, Water Drain e Light estavam com a API
+  errada e nunca funcionaram. Medido: dreno ligou com 87 cm, sprinkler jorra, luminária acende à noite.
+- **Quarto:** o Smart LED usava `digitalWrite`; corrigido para `analogWrite`. Medido: com movimento no escuro,
+  acendeu às 21:32:20 e apagou 13 s depois. Humidifier e Window ainda sem acionamento comprovado.
+- **Cozinha:** a fumaça a 30 % disparou `PERIGO`, com alarme, sprinkler e janela visíveis na planta, e `ALERTA DE GAS`
+  na Central. Falta ver o fan girando, e "normalizar" com a zona rodando.
+- **Doc dos devices conferida:** Fire Sprinkler, Alarm, AC e Humidifier com `digitalWrite`; Fan, Window, Door, Webcam e Garage
+  Door com `customWrite`; RGB LED com `analogWrite`. A Siren não foi aberta (já confirmada em 02/07).
+- **Faltam:** Garagem e Perímetro em regressão, Sala com movimento, e calibrar `LIM_ESCURO`/`LIM_CLARO` (o `raw` da luz
+  só foi visto em 0 e 1020).
+- Com contribuição, a água vai a perfil + taxa × 30; a umidade não respondeu. O umidificador segue sem teste real: o
+  perfil de São Luís não desce de 62 %.
+- O `.pkt` foi salvo às 21:33 com os 8 scripts atuais. Ao abrir, confira se todos rodam, porque ele guarda o estado.
 
 **Observado e ainda sem correção:**
 

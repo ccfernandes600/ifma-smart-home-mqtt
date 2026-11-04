@@ -189,19 +189,19 @@ Regra: SBC = 10 portas D0–D9 flexíveis · MCU = 6 portas usáveis D0–D5, ta
 | D3 | Motion Sensor | `digitalRead` |
 | D4 | AC / Air Cooler | `digitalWrite` |
 | D5 | Humidifier | `digitalWrite` |
-| D6 | Smart LED | `digitalWrite` |
+| D6 | Smart LED | `analogWrite` |
 | D7 | Window | `customWrite` |
 
 ### Jardim — SBC (192.168.1.25) · 7/10
 | Porta | Dispositivo | Diretiva |
 |---|---|---|
-| D0 | Water Level Monitor | `analogRead` |
-| D1 | Wind Sensor | `analogRead` |
-| D2 | ATM Pressure Sensor | `analogRead` |
+| D0 | Water Level Monitor | mostrador; leitura por `Environment.get("Water Level")` |
+| D1 | Wind Sensor | mostrador; leitura por `Environment.get("Wind Speed")` |
+| D2 | ATM Pressure Sensor | mostrador; leitura por `Environment.get("Atmospheric Pressure")` |
 | D3 | Photo Sensor | `analogRead` |
-| D4 | Lawn Sprinkler | `digitalWrite` |
-| D5 | Drain Actuator | `digitalWrite` |
-| D6 | Light | `digitalWrite` |
+| D4 | Lawn Sprinkler | `customWrite "0"/"1"` |
+| D5 | Water Drain | `customWrite "0"/"1"` |
+| D6 | Light | `customWrite "0"/"1"/"2"` (off/dim/on) |
 
 ### Garagem — MCU (192.168.1.26) · 4/6 (2 portas livres)
 | Porta | Dispositivo | Diretiva |

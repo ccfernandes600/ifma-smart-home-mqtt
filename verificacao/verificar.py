@@ -70,11 +70,12 @@ LIMITE_PORTAS = {"SBC": 10, "MCU": 6}
 # A API certa de cada dispositivo, pelo nome da constante da porta. Fan com
 # digitalWrite não dá erro nenhum: o Fan simplesmente não gira. Vem da doc de cada
 # dispositivo (docs/LEVANTAMENTO_DISPOSITIVOS_PT9.md §1.2).
-SO_CUSTOM = {"FAN", "PORTA", "JANELA", "SIRENE", "CAMERA", "LCD_MESTRE"}
-SO_DIGITAL = {
-    "AC", "ALARME", "SPEAKER", "SPRINKLER", "UMIDIFICADOR", "LED",
-    "IRRIGACAO", "DRENO", "LUMINARIA",
+SO_CUSTOM = {
+    "FAN", "PORTA", "JANELA", "SIRENE", "CAMERA", "LCD_MESTRE",
+    "IRRIGACAO", "DRENO", "LUMINARIA",  # doc de cada device, lida em 03/11/2026
 }
+SO_DIGITAL = {"AC", "ALARME", "SPEAKER", "SPRINKLER", "UMIDIFICADOR"}
+SO_ANALOG = {"LED"}  # Smart LED: "use analogWrite to adjust the device brightness"
 ESCRITAS = {"digitalWrite", "analogWrite", "customWrite"}
 
 # De que pacote do PT vem cada nome. Import esquecido só quebra dentro do simulador.
@@ -289,6 +290,8 @@ def _api_do_dispositivo():
                     ruins.append(f"{nome}:{no.lineno} {alvo.id} exige customWrite")
                 if alvo.id in SO_DIGITAL and no.func.id != "digitalWrite":
                     ruins.append(f"{nome}:{no.lineno} {alvo.id} exige digitalWrite")
+                if alvo.id in SO_ANALOG and no.func.id != "analogWrite":
+                    ruins.append(f"{nome}:{no.lineno} {alvo.id} exige analogWrite")
     if ruins:
         raise AssertionError("; ".join(ruins))
     return None

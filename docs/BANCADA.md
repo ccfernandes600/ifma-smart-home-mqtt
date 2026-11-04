@@ -124,23 +124,17 @@ voltar, é decisão de projeto, e paramos para discutir antes de seguir.
 Siga as Etapas 2 e 3 do **TESTE_ISOLADO** na ordem combinada: Perímetro → Sala → Cozinha → Quarto →
 Jardim → Garagem. Perímetro e Sala já passaram parte disso, mas o código mudou: é regressão, e é rápido.
 
-**Confira o tipo real de cada dispositivo na doc dele, no PT.** Ainda são suposições:
+**A API de cada atuador foi conferida na doc do device em 03/11/2026.** Três estavam erradas, e foram corrigidas
+com regra no verificador: Lawn Sprinkler, Water Drain e Light usam `customWrite`; Smart LED usa `analogWrite`.
+Water Level e Wind não têm GPIO, e a pressão leu 0: as três vêm de `Environment.get()`.
 
-| Dispositivo | Zona | Suposto | Sintoma se errado |
-|---|---|---|---|
-| Fire Sprinkler | Cozinha | `digitalWrite` | não aciona |
-| Window | Cozinha, Quarto | `customWrite "1"/"0"` | não abre |
-| Humidifier | Quarto | `digitalWrite` | não liga |
-| Smart LED | Quarto | `digitalWrite` | não acende |
-| Lawn Sprinkler, Drain, Light | Jardim | `digitalWrite` | não aciona |
-| Water Level, Wind, ATM Pressure | Jardim | `analogRead` | leitura sempre 0 |
-| `environment` na MCU | Garagem | existe | erro de import no arranque |
+**Técnica de bancada para mexer no ambiente:** num SBC do mesmo contêiner, chame
+`Environment.setContribution(id, taxa, 1.0e6, True)` a cada segundo. O valor vai para perfil + taxa × 30, e taxa 0
+devolve ao perfil. Vale para `Smoke` e `Water Level`; em `Humidity` não teve efeito visível.
 
 **Calibre com valores medidos, anotando data e valor no comentário:**
 
 - `LIM_ESCURO` e `LIM_CLARO` (Quarto e Jardim): o `raw` do Photo Sensor ao anoitecer.
-- `NIVEL_*` (Jardim): a relação entre cm e `raw`. Os 12 cm e 88 cm dos perfis foram escolhidos pelo
-  limiar, e 150/800 nunca foram medidos.
 - Na Cozinha e na Garagem, observe se o exaustor fica ligando e desligando perto de 20 %. Só nesse caso
   entra histerese no gás.
 

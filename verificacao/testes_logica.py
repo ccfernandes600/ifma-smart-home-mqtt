@@ -206,8 +206,30 @@ def quarto_nasce_com_luz_apagada():
 def jardim_nao_loga_mudanca_na_partida():
     z = carregar("zona_jardim")
     m = z["m"]
-    m.atualizar_agua(400)  # nível intermediário: nada muda
+    m.atualizar_agua(40)  # nível intermediário, em cm: nada muda
     confere(not any("Irrigacao" in x or "Dreno" in x for x in z["logs"]), "log falso na partida")
+
+
+def jardim_le_agua_do_ambiente():
+    """Water Level e Wind não têm GPIO (Direct Control: N/A): analogRead dá 0."""
+    z = carregar("zona_jardim", {"Water Level": 42.0, "Wind Speed": 12.3, "Atmospheric Pressure": 101.3})
+    m = z["m"]
+    m.processar_sensores()
+    confere(z["saidas"][m.IRRIGACAO] == "0", "irrigou com 42 cm de agua")
+    publicados = {e["topic"].split("/")[-1]: e["payload"] for e in z["enviados"]}
+    confere(publicados["agua"] == 42, "agua publicada: {}".format(publicados["agua"]))
+    confere(publicados["pressao"] == 101.3, "pressao publicada: {}".format(publicados["pressao"]))
+
+
+def jardim_alagado_drena():
+    z = carregar("zona_jardim", {"Water Level": 88.0})
+    m = z["m"]
+    m.processar_sensores()
+    confere(z["saidas"][m.DRENO] == "1", "nao drenou com 88 cm")
+    z["env"]["Water Level"] = 12.0
+    m.processar_sensores()
+    confere(z["saidas"][m.DRENO] == "0", "dreno nao desligou com 12 cm")
+    confere(z["saidas"][m.IRRIGACAO] == "1", "nao irrigou com 12 cm")
 
 
 caso("Quarto: umidificador nao religa em modo viagem", umidificador_fica_desligado_em_viagem)
@@ -228,5 +250,7 @@ caso("Central: JSON invalido fica registrado no log", json_invalido_fica_no_log)
 caso("Cozinha: nasce com os atuadores desligados", cozinha_nasce_com_atuadores_desligados)
 caso("Quarto: nasce com a luz apagada", quarto_nasce_com_luz_apagada)
 caso("Jardim: sem log falso de mudanca na partida", jardim_nao_loga_mudanca_na_partida)
+caso("Jardim: nivel de agua vem do ambiente", jardim_le_agua_do_ambiente)
+caso("Jardim: alagado drena e seco irriga", jardim_alagado_drena)
 
 sys.exit(1 if falhas else 0)

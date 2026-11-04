@@ -241,7 +241,7 @@ conferir.
 | Ambient Temperature | ≥ 30 °C liga, ≤ 28 °C desliga | AC e ventilador da Sala; AC do Quarto |
 | Humidity | < 40 % liga, ≥ 50 % desliga | umidificador do Quarto |
 | Visible Light | ≤ 200 raw acende, ≥ 300 apaga | luminária do Jardim, luz de presença do Quarto |
-| Water Level | ≤ 150 irriga, ≥ 800 drena | irrigação e dreno do Jardim |
+| Water Level | ≤ 15 cm irriga, ≥ 80 cm drena | irrigação e dreno do Jardim |
 
 **Um resultado honesto do perfil de São Luís:** o umidificador **nunca liga**, porque a umidade não
 desce de 62 %. Está certo — em São Luís, umidificador é equipamento sem função. O perfil chuvoso,

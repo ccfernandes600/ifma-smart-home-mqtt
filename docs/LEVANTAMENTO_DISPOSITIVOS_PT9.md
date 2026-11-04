@@ -43,9 +43,9 @@ Estes dispositivos conectam-se diretamente às portas D0–D9 do SBC via cabo Io
 | 6b | ~~**Temperature Monitor**~~ ⚠️ | **Smart Thing** | **NENHUMA API** (`Direct/Local/Remote Control: N/A`, sem Data Specifications) — só exibe a temperatura visualmente p/ Registration Server. **Não confundir com o Temperature Sensor** (nomes parecidos, palette próximo): cabeado num controlador, daria o clássico "sempre 0". | Display de temperatura |
 | 7 | **Humidity Sensor** | Analógico | `analogRead()` → 0–1023 | Umidade do ar |
 | 8 | **Photo Sensor** | Analógico | `analogRead()` → 0–1023 | Luminosidade (luz visível) |
-| 9 | **Water Level Monitor** | Analógico | `analogRead()` → 0–1023 | Nível de água |
-| 10 | **Wind Sensor** | Analógico | `analogRead()` → 0–1023 | Velocidade do vento |
-| 11 | **ATM Pressure Sensor** | Analógico | `analogRead()` → 0–1023 | Pressão atmosférica |
+| 9 | **Water Level Monitor** | Smart Thing | `Environment.get("Water Level")`, em cm. `analogRead` dá 0 (medido em 03/11/2026) | Nível de água |
+| 10 | **Wind Sensor** | Smart Thing | `Environment.get("Wind Speed")`, em km/h. `analogRead` satura em 1020 (medido em 03/11/2026) | Velocidade do vento |
+| 11 | **ATM Pressure Sensor** | Analógico na doc | A doc promete saída analógica, mas `analogRead` deu 0 com 101,3 kPa. Usar `Environment.get("Atmospheric Pressure")` | Pressão atmosférica |
 | 12 | **Humiture Sensor** | Analógico | `analogRead()` → 0–1023 | Temperatura + umidade (combo) |
 | 13 | **Sound Frequency Detector** | Analógico | `analogRead()` → 0–1023 | Frequência sonora (pitch) |
 | 14 | **Potentiometer** | Analógico | `analogRead()` → 0–1023 | Interação manual (giro) |
@@ -108,16 +108,16 @@ Estes dispositivos conectam-se diretamente às portas D0–D9 do SBC via cabo Io
 | # | Dispositivo | Tipo de Porta | API de Escrita | O que Faz | Impacto Ambiental |
 |---|-------------|:---:|---|---|---|
 | 1 | **LED** | Digital | `digitalWrite()` | Luz indicadora (1% max) | Luz visível |
-| 2 | **Smart LED / Dimmable LED** | Digital | `digitalWrite()` | Luz ajustável (3% max) | Luz visível |
+| 2 | **Smart LED / Dimmable LED** | Analógico | `analogWrite()` 0–1023 | Luz ajustável (3% max) | Luz visível |
 | 3 | **RGB LED** | Digital* | `analogWrite()` PWM | Luz colorida (2% max) | Luz visível |
-| 4 | **Light** | Digital | `digitalWrite()` | Iluminação forte (20% max) | Luz visível |
+| 4 | **Light** | Custom | `customWrite()` "0" off, "1" dim, "2" on | Iluminação forte (20% max) | Luz visível |
 | 5 | **Fan** ⚠️ | ~~Digital~~ **Custom** | `customWrite()` — ver nota abaixo | Ventilação | Vento, temp, umidade |
 | 6 | **AC / Air Conditioner** ✅ | Digital | `digitalWrite()` HIGH/LOW — **CONFIRMADO** (doc do device, 03/07/2026) | Refrigeração (−10°C/h, −2% umid/h) | Temp, umidade |
 | 7 | **Furnace / Heating Element** ⚠️ | Digital? | `digitalWrite()` — **não confirmado, checar doc do device** | Aquecimento (+10°C/h, −2% umid/h) | Temp, umidade |
 | 8 | **Humidifier** | Digital | `digitalWrite()` | Umidificação (+1% umid/h) | Umidade |
 | 9 | **Fire/Ceiling Sprinkler** | Digital | `digitalWrite()` | Sprinkler de teto (0.1 cm/s) | Nível água |
 | 10 | **Lawn/Floor Sprinkler** | Digital | `digitalWrite()` | Sprinkler de chão (0.1 cm/s) | Nível água |
-| 11 | **Drain Actuator** | Digital | `digitalWrite()` | Drenagem (−0.5 cm/s) | Nível água |
+| 11 | **Water Drain** | Custom | `customWrite()` "0"/"1" | Drenagem (doc do device: 0,5 cm/h num escritório típico) | Nível água |
 | 12 | **Home Speaker** | Digital | `digitalWrite()` | Som (65 dB, 20–60 CPS) | Som |
 | 13 | **Piezo Speaker** | Digital | `digitalWrite()` | Som baixo (10 dB, 20 CPS) | Som |
 | 14 | **Servo** | Digital | `digitalWrite()` | Motor servo | Movimento mecânico |

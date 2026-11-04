@@ -70,8 +70,8 @@ Pare a Central antes de começar. Rode **uma zona por vez**.
 - Ao normalizar, os quatro voltam juntos.
 
 ### 2.4 Jardim — 192.168.1.25
-- Nível de água abaixo de **150** → irrigação liga. Acima de **300** → desliga.
-- Acima de **800** → dreno liga. Abaixo de **650** → desliga.
+- Nível de água abaixo de **15 cm** → irrigação liga. Acima de **30 cm** → desliga.
+- Acima de **80 cm** → dreno liga. Abaixo de **65 cm** → desliga.
 - Photo abaixo de **200** → luminária acende; acima de **300** → apaga.
 - Detalhe do simulador que vale observar: o próprio Lawn Sprinkler eleva o nível de água do
   ambiente, então a malha fecha sozinha — irrigar faz o nível subir de verdade.

@@ -16,15 +16,18 @@
 # 4a automacao: LUMINARIA acende quando escurece (Photo Sensor), com
 # histerese pra nao piscar no lusco-fusco.
 #
-# Vento e pressao atmosferica sao so informativos (estacao meteo) --
-# publicados crus/quantizados; o mapeamento raw->unidade fisica desses
-# dois sensores NAO foi confirmado ainda (converter quando soubermos).
+# Vento e pressao atmosferica sao so informativos (estacao meteo).
 #
-# ATENCAO -- NAO CONFIRMADO no PT ainda (checar doc dos devices ao
-# montar): Lawn Sprinkler, Drain Actuator e Light assumidos
-# digitalWrite binario (catalogo). Water Level/Wind/ATM Pressure
-# assumidos analogRead (mesma familia do Temperature, ja validado).
-# LIMIARES DE AGUA/LUZ EM RAW -- CALIBRAR com leituras reais no PT.
+# MEDIDO em 03/11/2026 (PT 9.0.1.0858): Water Level Monitor e Wind Sensor
+# tem "Direct Control: N/A" na doc do device, como o CO Detector: leem o
+# ambiente, sem GPIO. Com 42 cm de agua, analogRead devolvia 0; o vento
+# saturava em 1020; a pressao tambem lia 0. Por isso as tres grandezas vem
+# de Environment.get(), em unidades reais (cm, km/h, kPa), e os devices
+# ficam so como mostradores.
+#
+# Lawn Sprinkler e Water Drain: customWrite "1"/"0". Light: customWrite
+# "0" (off), "1" (dim), "2" (on). Doc de cada device, lida em 03/11/2026.
+# LIMIARES DE LUZ EM RAW -- CALIBRAR com leituras reais no PT.
 #
 # MODO VIAGEM: esta zona ignora o broadcast casa/todas/cmd/modo de
 # proposito. Planta nao viaja: a irrigacao depende do nivel de agua,
@@ -36,33 +39,32 @@ from gpio import *
 from time import *
 from tcp import *
 from json import *
+from environment import *
 
 ZONA = "jardim"
 BROKER_IP = "192.168.1.100"
 BROKER_PORT = 1883
 
 # --- Entradas ---
-AGUA = 0  # D0: Water Level Monitor (analogRead 0-1023)
-VENTO = 1  # D1: Wind Sensor         (analogRead 0-1023)
-PRESSAO = 2  # D2: ATM Pressure        (analogRead 0-1023)
+# D0: Water Level Monitor, D1: Wind Sensor, D2: ATM Pressure -- so mostradores
 LUZ = 3  # D3: Photo Sensor        (analogRead 0-1023)
 # --- Saidas ---
-IRRIGACAO = 4  # D4: Lawn Sprinkler   (digitalWrite -- NAO CONFIRMADO)
-DRENO = 5  # D5: Drain Actuator    (digitalWrite -- NAO CONFIRMADO)
-LUMINARIA = 6  # D6: Light            (digitalWrite -- NAO CONFIRMADO)
+IRRIGACAO = 4  # D4: Lawn Sprinkler   (customWrite "0"/"1")
+DRENO = 5  # D5: Water Drain       (customWrite "0"/"1")
+LUMINARIA = 6  # D6: Light            (customWrite "0"/"1"/"2")
 # D7-D9 livres
 
-# Faixas do nivel de agua (raw 0-1023) -- CALIBRAR com leituras reais
-NIVEL_SECO = 150  # abaixo daqui: liga irrigacao
-NIVEL_BOM = 300  # irrigacao desliga ao atingir (histerese da irrigacao)
-NIVEL_ALAGADO = 800  # acima daqui: liga o dreno
-NIVEL_OK = 650  # dreno desliga ao descer ate aqui (histerese do dreno)
+# Faixas do nivel de agua, em cm (os perfis usam 12 cm no seco e 88 cm no alagado)
+NIVEL_SECO = 15  # abaixo daqui: liga irrigacao
+NIVEL_BOM = 30  # irrigacao desliga ao atingir (histerese da irrigacao)
+NIVEL_ALAGADO = 80  # acima daqui: liga o dreno
+NIVEL_OK = 65  # dreno desliga ao descer ate aqui (histerese do dreno)
 
 # Luminaria (raw do Photo Sensor) -- CALIBRAR
 LIM_ESCURO = 200  # abaixo: acende
 LIM_CLARO = 300  # acima: apaga (histerese pro lusco-fusco)
 
-PASSO_PUBLICACAO = 10  # quantizacao dos analogicos antes de publicar
+PASSO_PUBLICACAO = 10  # quantizacao da luz (raw) antes de publicar
 
 _irrigando = False
 _drenando = False
@@ -138,8 +140,8 @@ def atualizar_agua(nivel):
     elif nivel <= NIVEL_OK:
         _drenando = False
 
-    digitalWrite(IRRIGACAO, HIGH if _irrigando else LOW)
-    digitalWrite(DRENO, HIGH if _drenando else LOW)
+    customWrite(IRRIGACAO, "1" if _irrigando else "0")
+    customWrite(DRENO, "1" if _drenando else "0")
 
     if _irrigando != irrigando_antes:
         log(
@@ -160,7 +162,7 @@ def atualizar_luminaria(luz_raw):
         _luz_acesa = True
     elif luz_raw >= LIM_CLARO:
         _luz_acesa = False
-    digitalWrite(LUMINARIA, HIGH if _luz_acesa else LOW)
+    customWrite(LUMINARIA, "2" if _luz_acesa else "0")
     if _luz_acesa != anterior_estado:
         log(
             "Luminaria: {} (luz={})".format(
@@ -170,18 +172,18 @@ def atualizar_luminaria(luz_raw):
 
 
 def processar_sensores():
-    """Polling dos analogicos (nao geram evento) + automacoes."""
-    agua = analogRead(AGUA)
-    vento = analogRead(VENTO)
-    pressao = analogRead(PRESSAO)
+    """Polling do ambiente e da luz (nao geram evento) + automacoes."""
+    agua = Environment.get("Water Level")
+    vento = Environment.get("Wind Speed")
+    pressao = Environment.get("Atmospheric Pressure")
     luz = analogRead(LUZ)
 
     atualizar_agua(agua)
     atualizar_luminaria(luz)
 
-    publicar_se_mudou("agua", quantizar(agua))
-    publicar_se_mudou("vento", quantizar(vento))
-    publicar_se_mudou("pressao", quantizar(pressao))
+    publicar_se_mudou("agua", round(agua))
+    publicar_se_mudou("vento", round(vento))
+    publicar_se_mudou("pressao", round(pressao, 1))
     publicar_se_mudou("luz", quantizar(luz))
 
 
@@ -194,19 +196,18 @@ def ao_receber(data):
     alvo = cmd.get("topic", "")
     v = cmd.get("payload", 0)
     if alvo.endswith("/cmd/irrigacao"):
-        digitalWrite(IRRIGACAO, HIGH if v else LOW)
+        customWrite(IRRIGACAO, "1" if v else "0")
         log("Comando recebido: irrigacao = {}".format(v))
     elif alvo.endswith("/cmd/dreno"):
-        digitalWrite(DRENO, HIGH if v else LOW)
+        customWrite(DRENO, "1" if v else "0")
         log("Comando recebido: dreno = {}".format(v))
     elif alvo.endswith("/cmd/luz"):
-        digitalWrite(LUMINARIA, HIGH if v else LOW)
+        customWrite(LUMINARIA, "2" if v else "0")
         log("Comando recebido: luz = {}".format(v))
 
 
 def setup():
-    for p in [AGUA, VENTO, PRESSAO, LUZ]:
-        pinMode(p, IN)
+    pinMode(LUZ, IN)
     for p in [IRRIGACAO, DRENO, LUMINARIA]:
         pinMode(p, OUT)
     cliente.onReceive(ao_receber)

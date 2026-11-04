@@ -14,14 +14,8 @@
 #
 # Janela abre so por comando remoto (cmd/janela), como Door/Garage Door.
 #
-# ATENCAO -- NAO CONFIRMADO no PT ainda (checar doc dos devices ao
-# montar, mesma diligencia do Fan/AC):
-#   - Humidifier: assumido digitalWrite binario (catalogo diz +1%/h).
-#   - Smart LED: assumido digitalWrite binario (o catalogo diz
-#     "Dimmable", pode aceitar niveis via custom/analog -- usamos so
-#     liga/desliga por enquanto).
-#   - Window: assumido customWrite "1"/"0" (analogia a Door -- ainda
-#     nao confirmado em teste; mesmo assumido na Cozinha).
+# APIs conferidas na doc de cada device em 03/11/2026: Humidifier com
+# digitalWrite, Smart LED com analogWrite, Window com customWrite "0"/"1".
 # Ja confirmados em outras zonas: AC (digitalWrite), Temperature/
 # Humidity/Photo (analogRead), Motion (digitalRead + hold).
 # =====================================================================
@@ -42,9 +36,9 @@ LUZ = 2  # D2: Photo Sensor  (analogRead 0-1023)
 MOV = 3  # D3: Motion        (digitalRead, evento)
 # --- Saidas ---
 AC = 4  # D4: AC / Air Conditioner (digitalWrite -- confirmado)
-UMIDIFICADOR = 5  # D5: Humidifier    (digitalWrite -- NAO CONFIRMADO)
-LED = 6  # D6: Smart LED      (digitalWrite -- NAO CONFIRMADO)
-JANELA = 7  # D7: Window        (customWrite -- NAO CONFIRMADO)
+UMIDIFICADOR = 5  # D5: Humidifier    (digitalWrite -- doc do device, 03/11/2026)
+LED = 6  # D6: Smart LED      (analogWrite 0-1023 -- doc do device, 03/11/2026)
+JANELA = 7  # D7: Window        (customWrite "0"/"1" -- doc do device, 03/11/2026)
 # D8, D9 livres
 
 # Climatizacao (graus Celsius; conversao confirmada por doc + teste)
@@ -56,6 +50,7 @@ UMID_MIN = 40.0  # liga o umidificador abaixo daqui
 UMID_OK = 50.0  # so desliga ao recuperar este nivel
 
 # Luz de presenca
+BRILHO_LED = 1023  # brilho total do Smart LED
 LIM_ESCURO = 200  # raw 0-1023 do Photo Sensor -- CALIBRAR no PT
 DURACAO_MOVIMENTO = 10  # segundos que "movimento" fica reportado ativo
 
@@ -192,7 +187,7 @@ def atualizar_luz_presenca(luz_raw):
     acender = movimento_ativo and escuro and not _modo_viagem
     if acender != _led_aceso:
         _led_aceso = acender
-        digitalWrite(LED, HIGH if acender else LOW)
+        analogWrite(LED, BRILHO_LED if acender else 0)
         log("Luz de presenca: {}".format("acendeu" if acender else "apagou"))
 
 
@@ -260,7 +255,7 @@ def ao_receber(data):
         digitalWrite(UMIDIFICADOR, HIGH if v else LOW)
         log("Comando recebido: umidificador = {}".format(v))
     elif alvo.endswith("/cmd/led"):
-        digitalWrite(LED, HIGH if v else LOW)
+        analogWrite(LED, BRILHO_LED if v else 0)
         log("Comando recebido: led = {}".format(v))
     elif alvo.endswith("/cmd/janela"):
         customWrite(JANELA, "1" if v else "0")
@@ -279,7 +274,7 @@ def setup():
         pinMode(p, OUT)
     # A luz so e escrita na transicao: sem isto, uma sobra da execucao
     # anterior ficaria acesa, porque _led_aceso nasce False.
-    digitalWrite(LED, LOW)
+    analogWrite(LED, 0)
     cliente.onReceive(ao_receber)
     cliente.connect(BROKER_IP, BROKER_PORT)
     log("Quarto conectando ao broker {}".format(BROKER_IP))
