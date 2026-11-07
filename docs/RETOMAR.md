@@ -125,7 +125,7 @@ o que é compatível com a queda ao abrir o arquivo, sem medição contínua. No
 `libxcb-cursor0`. Valeu como segundo sistema, mas não como outra máquina: mesmo computador e mesmo usuário. Só o painel
 foi conferido; os demais comportamentos não foram repetidos no Linux.
 
-**Site público, em 04/11:** https://ifma-smart-home-mqtt.netlify.app, com fonte em `web/`. Mostra os logs da bancada como reprodução, sem dados ao vivo. Não oferece o `.pkt`: este repositório é privado, e isso ainda é decisão em aberto. Para publicar de novo: `npx netlify-cli@17 deploy --prod --dir web` (sem `web/desktop.ini`).
+**Site público, em 04/11:** https://ifma-smart-home-mqtt.netlify.app, com fonte em `web/`. Na primeira versão, mostrava os logs da bancada como reprodução, sem dados ao vivo, e não oferecia o `.pkt`, porque o repositório ainda era privado. Superado no mesmo dia: o repositório ficou público (ver o topo), o site aponta para ele, e por ele o `src/IFMA-MQTT.pkt` oficial fica disponível; os dados ao vivo vêm da cópia pessoal com chave. Para publicar de novo: `npx netlify-cli@17 deploy --prod --dir web` (sem `web/desktop.ini`).
 
 **O simulador fala com a internet (04/11):** de um script no SBC, `RealHTTPClient` buscou o site por HTTPS (`200`, com o HTML) e enviou um estado por POST à função `/api/estado` (`200 {"ok":true,"topicos":2}`, e a API pública devolveu os valores). O PT pede autorização por arquivo e por endereço, na janela `External Network Access`; respondi `Yes` só para os dois endereços do site. Os callbacks de `onDone` recebem `(status, corpo)`. O site ainda não mostra esses dados, e o `.pkt` validado não mudou.
 
